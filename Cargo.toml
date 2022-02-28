@@ -1,0 +1,16 @@
+[package]
+name = "sbi"
+version = "0.2.0"
+authors = ["Wesley Norris <repnop@outlook.com>"]
+edition = "2021"
+
+repository = "https://github.com/repnop/fdt"
+
+license = "MPL-2.0"
+
+description = "A pure-Rust library to interact with the RISC-V Supervisor Binary Interface"
+keywords = ["sbi", "riscv", "osdev"]
+categories = ["embedded", "os"]
+readme = "README.md"
+
+[dependencies]
