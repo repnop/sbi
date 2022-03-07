@@ -20,6 +20,8 @@ pub mod hart_state_management;
 pub mod ipi;
 /// Legacy SBI calls
 pub mod legacy;
+/// Performance Monitoring Unit extension
+pub mod performance_monitoring_unit;
 /// RFENCE extension
 pub mod rfence;
 /// System Reset extension

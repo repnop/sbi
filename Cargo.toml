@@ -14,3 +14,8 @@ categories = ["embedded", "os"]
 readme = "README.md"
 
 [dependencies]
+
+[[test]]
+name = "legacy"
+path = "tests/legacy.rs"
+harness = false

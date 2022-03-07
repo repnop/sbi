@@ -18,10 +18,6 @@ pub fn remote_fence_i(hart_mask: HartMask) -> Result<(), SbiError> {
 /// Instructs the given harts to execute a `SFENCE.VMA` for the region contained
 /// by `start_addr` and `size`. `size` is the size in bytes of the memory region
 /// for which an `SFENCE.VMA` will be executed.
-///
-/// ### Possible errors
-///
-/// [`SbiError::InvalidAddress`]: Either `start_address` or `size` is invalid
 pub fn remote_sfence_vma(
     hart_mask: HartMask,
     start_addr: usize,
@@ -44,10 +40,6 @@ pub fn remote_sfence_vma(
 /// by `start_addr` and `size`, only covering the provided ASID. `size` is the
 /// size in bytes of the memory region for which an `SFENCE.VMA` will be
 /// executed.
-///
-/// ### Possible errors
-///
-/// [`SbiError::InvalidAddress`]: Either `start_address` or `size` is invalid
 pub fn remote_sfence_vma_asid(
     hart_mask: HartMask,
     start_addr: usize,
