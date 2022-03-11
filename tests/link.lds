@@ -7,8 +7,6 @@
     obtain one at https://mozilla.org/MPL/2.0/.
 */
 
-OUTPUT_ARCH(riscv64gc)
-
 ENTRY(_start);
 
 SECTIONS {

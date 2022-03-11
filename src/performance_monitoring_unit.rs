@@ -7,7 +7,7 @@
 
 #![allow(missing_docs)]
 
-use crate::{ecall0, ecall1, ecall5, SbiError};
+use crate::{ecall0, ecall1, SbiError};
 
 pub const EXTENSION_ID: usize = 0x504D55;
 
@@ -17,6 +17,7 @@ pub fn num_counters() -> usize {
 }
 
 #[inline]
+#[doc(alias = "counter_get_info", alias = "sbi_pmu_counter_get_info")]
 pub fn get_counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiError> {
     let res = unsafe { ecall1(counter_idx.0, EXTENSION_ID, 1) }?;
     Ok(match (res as isize).is_positive() {
@@ -30,8 +31,11 @@ pub fn get_counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiErr
     })
 }
 
-pub use self::configure_matching_counters as counter_config_matching;
-
+#[inline]
+#[doc(
+    alias = "counter_config_matching",
+    alias = "sbi_pmu_counter_config_matching"
+)]
 pub fn configure_matching_counters(
     counter_mask: CounterIndexMask,
     config_flags: CounterConfigurationFlags,
@@ -40,7 +44,7 @@ pub fn configure_matching_counters(
 ) -> Result<CounterIndex, SbiError> {
     #[cfg(target_arch = "riscv64")]
     let res = unsafe {
-        ecall5(
+        crate::ecall5(
             counter_mask.base,
             counter_mask.mask,
             config_flags.0,
@@ -68,10 +72,72 @@ pub fn configure_matching_counters(
     Ok(CounterIndex(res))
 }
 
+#[inline]
+#[doc(alias = "counter_start", alias = "sbi_pmu_counter_start")]
+pub fn start_counters(
+    counter_mask: CounterIndexMask,
+    start_flags: CounterStartFlags,
+    initial_value: u64,
+) -> Result<(), SbiError> {
+    #[cfg(target_arch = "riscv64")]
+    unsafe {
+        crate::ecall4(
+            counter_mask.base,
+            counter_mask.mask,
+            start_flags.0,
+            initial_value as usize,
+            EXTENSION_ID,
+            3,
+        )
+    }?;
+
+    #[cfg(target_arch = "riscv32")]
+    unsafe {
+        crate::ecall5(
+            counter_mask.base,
+            counter_mask.mask,
+            start_flags.0,
+            initial_value as usize,
+            (initial_value >> 32) as usize,
+            EXTENSION_ID,
+            3,
+        )
+    }?;
+
+    Ok(())
+}
+
+#[inline]
+#[doc(alias = "counter_stop", alias = "sbi_pmu_counter_stop")]
+pub fn stop_counters(
+    counter_mask: CounterIndexMask,
+    stop_flags: CounterStopFlags,
+) -> Result<(), SbiError> {
+    unsafe {
+        crate::ecall3(
+            counter_mask.base,
+            counter_mask.mask,
+            stop_flags.0,
+            EXTENSION_ID,
+            4,
+        )
+        .map(drop)
+    }
+}
+
+#[inline]
+#[doc(alias = "counter_fw_read", alias = "sbi_pmu_counter_fw_read")]
+pub fn read_fw_counter(counter_idx: CounterIndex) -> Result<usize, SbiError> {
+    unsafe { ecall1(counter_idx.0, EXTENSION_ID, 5) }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct CounterConfigurationFlags(usize);
 
 impl CounterConfigurationFlags {
+    /// No flags
+    pub const NONE: Self = Self(0);
+
     /// Skip the counter matching
     pub const SKIP_MATCH: Self = Self(1 << 0);
     /// Clear (or zero) the counter value
@@ -120,6 +186,68 @@ impl core::ops::BitOr for CounterConfigurationFlags {
 impl core::ops::BitOrAssign for CounterConfigurationFlags {
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
+    }
+}
+
+impl Default for CounterConfigurationFlags {
+    fn default() -> Self {
+        Self::NONE
+    }
+}
+
+pub struct CounterStartFlags(usize);
+
+impl CounterStartFlags {
+    /// No flags
+    pub const NONE: Self = Self(0);
+    /// Set the initial counter value
+    pub const SET_INIT_VALUE: Self = Self(1);
+}
+
+impl core::ops::BitOr for CounterStartFlags {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl core::ops::BitOrAssign for CounterStartFlags {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl Default for CounterStartFlags {
+    fn default() -> Self {
+        Self::NONE
+    }
+}
+
+pub struct CounterStopFlags(usize);
+
+impl CounterStopFlags {
+    /// No flags
+    pub const NONE: Self = Self(0);
+    /// Reset the counter to event mapping
+    pub const RESET: Self = Self(1);
+}
+
+impl core::ops::BitOr for CounterStopFlags {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl core::ops::BitOrAssign for CounterStopFlags {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl Default for CounterStopFlags {
+    fn default() -> Self {
+        Self::NONE
     }
 }
 
