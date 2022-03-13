@@ -54,6 +54,10 @@ pub enum SbiError {
     InvalidAddress,
     /// The resource is already available
     AlreadyAvailable,
+    /// The resource was previously started
+    AlreadyStarted,
+    /// The resource was previously stopped
+    AlreadyStopped,
 }
 
 impl SbiError {
@@ -66,6 +70,8 @@ impl SbiError {
             -4 => SbiError::Denied,
             -5 => SbiError::InvalidAddress,
             -6 => SbiError::AlreadyAvailable,
+            -7 => SbiError::AlreadyStarted,
+            -8 => SbiError::AlreadyStopped,
             n => unreachable!("bad SBI error return value: {}", n),
         }
     }

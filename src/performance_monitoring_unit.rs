@@ -5,17 +5,23 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at https://mozilla.org/MPL/2.0/.
 
-#![allow(missing_docs)]
-
 use crate::{ecall0, ecall1, SbiError};
 
+/// Performance Monitoring Unit extension ID
 pub const EXTENSION_ID: usize = 0x504D55;
 
+/// Returns the number of available performance counters, both hardware and
+/// firmware
 #[inline]
 pub fn num_counters() -> usize {
     unsafe { ecall0(EXTENSION_ID, 0).unwrap() }
 }
 
+/// Retreive the information associated with a given performance counter.
+/// 
+/// ### Possible errors
+/// 
+/// [`SbiError::InvalidParameter`]: The given [`CounterIndex`] is not valid.
 #[inline]
 #[doc(alias = "counter_get_info", alias = "sbi_pmu_counter_get_info")]
 pub fn get_counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiError> {
@@ -31,6 +37,16 @@ pub fn get_counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiErr
     })
 }
 
+/// Configure a set of matching performance counters described by the given
+/// [`CounterIndexMask`].
+/// 
+/// ### Possible errors
+/// 
+/// [`SbiError::InvalidParameter`]: One or more of the given counter indices was
+///     not valid.
+/// 
+/// [`SbiError::NotSupported`]: None of the given counters can monitor the
+///     specified event.
 #[inline]
 #[doc(
     alias = "counter_config_matching",
@@ -39,7 +55,7 @@ pub fn get_counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiErr
 pub fn configure_matching_counters(
     counter_mask: CounterIndexMask,
     config_flags: CounterConfigurationFlags,
-    event_idx: EventIdx,
+    event_idx: EventIndex,
     event_data: u64,
 ) -> Result<CounterIndex, SbiError> {
     #[cfg(target_arch = "riscv64")]
@@ -72,6 +88,9 @@ pub fn configure_matching_counters(
     Ok(CounterIndex(res))
 }
 
+/// Start the performance counters described by the given [`CounterIndexMask`].
+/// 
+/// 
 #[inline]
 #[doc(alias = "counter_start", alias = "sbi_pmu_counter_start")]
 pub fn start_counters(
@@ -131,6 +150,7 @@ pub fn read_fw_counter(counter_idx: CounterIndex) -> Result<usize, SbiError> {
     unsafe { ecall1(counter_idx.0, EXTENSION_ID, 5) }
 }
 
+/// Counter configuration flags
 #[derive(Debug, Clone, Copy)]
 pub struct CounterConfigurationFlags(usize);
 
@@ -195,6 +215,7 @@ impl Default for CounterConfigurationFlags {
     }
 }
 
+/// Counter start flags
 pub struct CounterStartFlags(usize);
 
 impl CounterStartFlags {
@@ -223,6 +244,7 @@ impl Default for CounterStartFlags {
     }
 }
 
+/// Counter stop flags
 pub struct CounterStopFlags(usize);
 
 impl CounterStopFlags {
@@ -251,6 +273,7 @@ impl Default for CounterStopFlags {
     }
 }
 
+/// A bitmask of counter indices to be acted upon
 pub struct CounterIndexMask {
     base: usize,
     mask: usize,
@@ -284,8 +307,9 @@ impl CounterIndexMask {
         }
     }
 
-    /// Select the given counter index. If `counter_idx` is out of the range of available
-    /// selectable counter indices, the [`CounterIndexMask`] is unchanged.
+    /// Select the given counter index. If `counter_idx` is out of the range of
+    /// available selectable counter indices, the [`CounterIndexMask`] is
+    /// unchanged.
     #[inline]
     #[must_use]
     pub const fn with(mut self, counter_idx: CounterIndex) -> Self {
@@ -297,19 +321,30 @@ impl CounterIndexMask {
     }
 }
 
+/// A logical index assigned to a specific performance counter
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct CounterIndex(usize);
 
 impl CounterIndex {
+    /// Create a new [`CounterIndex`]
     pub fn new(idx: usize) -> Self {
         Self(idx)
     }
 }
 
+/// Information about a specific performance counter
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CounterInfo {
-    Hardware { csr_number: usize, width: usize },
+    /// The counter is a hardware performance counter
+    Hardware {
+        /// The underlying CSR number backing the performance counter
+        csr_number: usize,
+        /// The CSR width. Equal to one less than the number of the bits used by
+        /// the CSR.
+        width: usize
+    },
+    /// The counter is a firmware provided performance counter
     Firmware,
 }
 
@@ -317,11 +352,14 @@ mod sealed {
     pub trait Sealed {}
 }
 
+/// A hardware or firmware event type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct EventIdx(usize);
+pub struct EventIndex(usize);
 
-impl EventIdx {
+impl EventIndex {
+    /// Create a new [`EventIndex`] from the given [`EventType`] and
+    /// [`EventCode`]
     pub fn new<T: EventType>(
         #[allow(unused_variables)] event_type: T,
         event_code: <T as EventType>::EventCode,
@@ -330,15 +368,20 @@ impl EventIdx {
     }
 }
 
+/// A type of performance monitoring event
+#[allow(missing_docs)]
 pub trait EventType: sealed::Sealed {
     const TYPE_VALUE: usize;
     type EventCode: EventCode;
 }
 
+/// A specific performance monitoring event in an [`EventType`]
+#[allow(missing_docs)]
 pub trait EventCode: Sized + sealed::Sealed {
     fn to_code(self) -> u16;
 }
 
+/// A general hardware performance monitoring event type
 #[derive(Debug, Clone, Copy)]
 pub struct HardwareGeneralEvent;
 
@@ -348,7 +391,9 @@ impl EventType for HardwareGeneralEvent {
     type EventCode = HardwareGeneralEventCode;
 }
 
+/// A general hardware performance monitoring event code
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[allow(missing_docs)]
 #[repr(u16)]
 pub enum HardwareGeneralEventCode {
     CpuCycles = 1,
@@ -370,6 +415,7 @@ impl EventCode for HardwareGeneralEventCode {
     }
 }
 
+/// A hardware cache performance monitoring event type
 #[derive(Debug, Clone, Copy)]
 pub struct HardwareCacheEvent;
 
@@ -379,11 +425,13 @@ impl EventType for HardwareCacheEvent {
     type EventCode = HardwareCacheEventCode;
 }
 
+/// A hardware cache performance monitoring event code
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct HardwareCacheEventCode(u16);
 
 #[rustfmt::skip]
+#[allow(missing_docs)]
 impl HardwareCacheEventCode {
     pub const LEVEL_1_DATA_READ_ACCESS: Self = Self::new(HardwareCacheEventCodeId::Level1Data, HardwareCacheEventCodeOperationId::Read, HardwareCacheEventCodeResultId::Access);
     pub const LEVEL_1_DATA_READ_MISS: Self = Self::new(HardwareCacheEventCodeId::Level1Data, HardwareCacheEventCodeOperationId::Read, HardwareCacheEventCodeResultId::Miss);
@@ -434,6 +482,8 @@ impl HardwareCacheEventCode {
     pub const NUMA_NODE_PREFETCH_ACCESS: Self = Self::new(HardwareCacheEventCodeId::NumaNode, HardwareCacheEventCodeOperationId::Prefetch, HardwareCacheEventCodeResultId::Access);
     pub const NUMA_NODE_PREFETCH_MISS: Self = Self::new(HardwareCacheEventCodeId::NumaNode, HardwareCacheEventCodeOperationId::Prefetch, HardwareCacheEventCodeResultId::Miss);
 
+    /// Create a new [`HardwareCacheEventCode`] from the cache unit, operation,
+    /// and result to monitor
     pub const fn new(
         id: HardwareCacheEventCodeId,
         op: HardwareCacheEventCodeOperationId,
@@ -450,19 +500,29 @@ impl EventCode for HardwareCacheEventCode {
     }
 }
 
+/// The hardware cache unit to monitor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
 pub enum HardwareCacheEventCodeId {
+    /// First level data cache
     Level1Data = 0,
+    /// First level instruction cache
     Level1Instruction = 1,
+    /// Last level cache
     LastLevel = 2,
+    /// Data translation lookaside buffer cache
     DataTlb = 3,
+    /// Instruction translation lookaside buffer cache
     InstructionTlb = 4,
+    #[allow(missing_docs)]
     BranchPredictorUnit = 5,
+    /// Non-uniform memory access node cache
     NumaNode = 6,
 }
 
+/// The cache operation to monitor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[allow(missing_docs)]
 #[repr(u16)]
 pub enum HardwareCacheEventCodeOperationId {
     Read = 0,
@@ -470,14 +530,17 @@ pub enum HardwareCacheEventCodeOperationId {
     Prefetch = 2,
 }
 
+/// The result of the caching operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[allow(missing_docs)]
 #[repr(u16)]
 pub enum HardwareCacheEventCodeResultId {
     Access = 0,
     Miss = 1,
 }
 
-#[derive(Debug, Clone, Copy)]
+/// A raw hardware performance monitoring event
+#[derive(Debug, Clone, Copy, Default)]
 pub struct HardwareRawEvent;
 
 impl sealed::Sealed for HardwareRawEvent {}
@@ -486,7 +549,8 @@ impl EventType for HardwareRawEvent {
     type EventCode = HardwareRawEventCode;
 }
 
-#[derive(Debug, Clone, Copy)]
+/// A raw hardware performance monitoring event code
+#[derive(Debug, Clone, Copy, Default)]
 pub struct HardwareRawEventCode;
 
 impl sealed::Sealed for HardwareRawEventCode {}
@@ -496,6 +560,7 @@ impl EventCode for HardwareRawEventCode {
     }
 }
 
+/// A firmware performance monitoring event type
 #[derive(Debug, Clone, Copy)]
 pub struct FirmwareEvent;
 
@@ -505,7 +570,9 @@ impl EventType for FirmwareEvent {
     type EventCode = FirmwareEventCode;
 }
 
+/// Firmware performance monitoring event metrics
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(missing_docs)]
 #[repr(u16)]
 pub enum FirmwareEventCode {
     MisalignedLoad = 0,
