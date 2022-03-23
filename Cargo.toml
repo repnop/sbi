@@ -16,6 +16,11 @@ readme = "README.md"
 [dependencies]
 
 [[test]]
-name = "legacy"
-path = "tests/legacy.rs"
+name = "hart_state_management"
+path = "tests/hsm.rs"
+harness = false
+
+[[test]]
+name = "interprocessor_interrupt"
+path = "tests/ipi.rs"
 harness = false

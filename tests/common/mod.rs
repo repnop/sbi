@@ -1,3 +1,5 @@
+static mut BOOT_HART_ID: usize = 0;
+
 #[naked]
 #[no_mangle]
 #[rustfmt::skip]
@@ -22,8 +24,11 @@ unsafe extern "C" fn _start(hart_id: usize, fdt: usize) -> ! {
                 addi t0, t0, 4
                 j 1b
             2:
+                lla t2, {boot_hart_id}
+                sd a0, 0(t2)
                 j main
         ",
+        boot_hart_id = sym BOOT_HART_ID,
         options(noreturn),
     );
 }
@@ -74,4 +79,64 @@ pub fn exit(status: u16) -> ! {
     unsafe { core::ptr::write_volatile(test_device, exit_status) };
 
     unreachable!()
+}
+
+pub fn wait(millis: u32) {
+    let mut time: u64;
+    unsafe { core::arch::asm!("csrr {}, time", out(reg) time) };
+
+    // QEMU has a 10 MHz clock
+
+    let micros = millis as u64 * 1000;
+    let hundred_nanos = micros * 10;
+    let target_time = time + hundred_nanos;
+
+    while time < target_time {
+        unsafe { core::arch::asm!("csrr {}, time", out(reg) time) };
+    }
+}
+
+pub fn set_stvec(f: fn() -> !) {
+    unsafe { core::arch::asm!("csrw stvec, {}", in(reg) f) };
+}
+
+static mut SECOND_STACK: [u8; 4096] = [0; 4096];
+
+#[naked]
+#[rustfmt::skip]
+unsafe extern "C" fn other_entry() -> ! {
+    core::arch::asm!(
+        "
+            lla sp, {stack}
+            addi sp, sp, 1024
+            addi sp, sp, 1024
+            addi sp, sp, 1024
+            addi sp, sp, 1024
+            jr a1
+        ",
+        stack = sym SECOND_STACK,
+        options(noreturn),
+    )
+}
+
+pub fn start_other_hart(f: extern "C" fn(usize) -> !) {
+    let target_hart = if unsafe { BOOT_HART_ID } == 0 { 1 } else { 0 };
+    sbi::hart_state_management::hart_start(target_hart, other_entry as usize, f as usize).unwrap();
+}
+
+pub fn scause() -> usize {
+    let mut scause: usize;
+    unsafe { core::arch::asm!("csrr {}, scause", out(reg) scause) };
+    scause
+}
+
+pub fn trigger_timer_interrupt() -> ! {
+    enable_interrupts();
+    sbi::timer::set_timer(0).expect("set_timer");
+    loop {}
+}
+
+pub fn enable_interrupts() {
+    unsafe { core::arch::asm!("csrs sie, {}", in(reg) (1 << 1) | (1 << 5) | (1 << 9)) };
+    unsafe { core::arch::asm!("csrsi sstatus, 1 << 1") };
 }

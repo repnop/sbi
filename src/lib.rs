@@ -89,6 +89,8 @@ impl core::fmt::Display for SbiError {
                 SbiError::InvalidAddress => "invalid address passed",
                 SbiError::InvalidParameter => "invalid parameter passed",
                 SbiError::NotSupported => "SBI call not implemented or functionality not available",
+                SbiError::AlreadyStarted => "resource was already started",
+                SbiError::AlreadyStopped => "resource was already stopped",
             }
         )
     }
