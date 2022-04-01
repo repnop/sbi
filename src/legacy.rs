@@ -11,7 +11,7 @@ use core::arch::asm;
 pub const SET_TIMER_EID: usize = 0x00;
 
 /// Schedule an interrupt for `time` in the future. To clear the timer interrupt
-/// without scheduling another timer event, a time infinitely far into the
+/// without scheduling another timer event, set a time infinitely far into the
 /// future (`u64::MAX`) or mask the `STIE` bit of the `sie` CSR. This function
 /// will clear the pending timer interrupt bit.
 ///

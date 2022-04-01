@@ -11,7 +11,7 @@ use crate::SbiError;
 pub const EXTENSION_ID: usize = 0x54494D45;
 
 /// Schedule an interrupt for `time` in the future. To clear the timer interrupt
-/// without scheduling another timer event, a time infinitely far into the
+/// without scheduling another timer event, set a time infinitely far into the
 /// future (`u64::MAX`) or mask the `STIE` bit of the `sie` CSR. This function
 /// will clear the pending timer interrupt bit.
 /// 
