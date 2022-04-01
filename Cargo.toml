@@ -24,3 +24,8 @@ harness = false
 name = "interprocessor_interrupt"
 path = "tests/ipi.rs"
 harness = false
+
+[[test]]
+name = "timer_interrupt"
+path = "tests/timer.rs"
+harness = false

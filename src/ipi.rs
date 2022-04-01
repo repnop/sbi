@@ -18,6 +18,8 @@ pub const EXTENSION_ID: usize = 0x735049;
 /// [`SbiError::InvalidParameter`]: The `hart_mask` base or any hart IDs
 ///     specified by `hart_mask` are invalid or unaccessible from supervisor
 ///     mode
+#[inline]
+#[doc(alias = "sbi_send_ipi")]
 pub fn send_ipi(hart_mask: HartMask) -> Result<(), SbiError> {
     unsafe { ecall2(hart_mask.mask, hart_mask.base, EXTENSION_ID, 0).map(drop) }
 }

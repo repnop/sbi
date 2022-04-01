@@ -1,4 +1,4 @@
-This crate provides a safe, pure-Rust implementation of the RISC-V SBI interface to be used in S-mode software, such as operating system kernels. This crate implements the `v1.0-rc2` version of the SBI specification and aims to stay up to date with it as newer versions of the specification are released.
+This crate provides a safe, pure-Rust implementation of the RISC-V SBI interface to be used in S-mode software, such as operating system kernels. This crate implements the `v1.0.0` version of the SBI specification and aims to stay up to date with it as newer versions of the specification are released.
 
 ## Important safety note
 
@@ -18,7 +18,20 @@ Extension implementation state legend:
 <details>
 <summary>SBI extensions implementation state</summary>
 
-#### Base extension ✅
+#### Legacy ✅
+|             Function           | Extension ID | Implemented |
+| ------------------------------ | :----------: | :---------: |
+| Set timer                      | 0            | ✅          |
+| Console putchar                | 1            | ✅          |
+| Console getchar                | 2            | ✅          |
+| Clear IPI                      | 3            | ✅          |
+| Send IPI                       | 4            | ✅          |
+| Remote `FENCE.I`               | 5            | ✅          |
+| Remote `SFENCE.VMA`            | 6            | ✅          |
+| Remote `SFENCE.VMA` with ASID  | 7            | ✅          |
+| Shutdown                       | 8            | ✅          |
+
+#### Base ✅
 |             Function           | Function ID | Implemented |
 | ------------------------------ | :---------: | :---------: |
 | Get SBI specification version  | 0           | ✅          |
@@ -33,7 +46,46 @@ Extension implementation state legend:
 #### Timer ✅
 | Function  | Function ID | Implemented |
 | --------- | :---------: | :---------: |
-| Set Timer | 0           | ✅          |
+| Set timer | 0           | ✅          |
+
+#### Interprocessor Interrupt (IPI) ✅
+| Function  | Function ID | Implemented |
+| --------- | :---------: | :---------: |
+| Send IPI  | 0           | ✅          |
+
+#### RFENCE ✅
+|                   Function               | Function ID | Implemented |
+| ---------------------------------------- | :---------: | :---------: |
+| Remote `FENCE.I`                         | 0           | ✅          |
+| Remote `SFENCE.VMA`                      | 1           | ✅          |
+| Remote `SFENCE.VMA` with ASID            | 2           | ✅          |
+| Remote `HFENCE.GVMA` with VMID           | 3           | ✅          |
+| Remote `HFENCE.GVMA`                     | 4           | ✅          |
+| Remote `HFENCE.VVMA` with ASID           | 5           | ✅          |
+| Remote `HFENCE.VVMA`                     | 6           | ✅          |
+
+#### Hart State Management ✅
+|       Function      | Function ID | Implemented |
+| ------------------- | :---------: | :---------: |
+| Hart start          | 0           | ✅          |
+| Hart stop           | 1           | ✅          |
+| Get hart status     | 2           | ✅          |
+| Hart suspend        | 3           | ✅          |
+
+#### System Reset ✅
+|   Function    | Function ID | Implemented |
+| ------------- | :---------: | :---------: |
+| System reset  | 0           | ✅          |
+
+#### Performance Monitoring Unit ✅
+|                   Function               | Function ID | Implemented |
+| ---------------------------------------- | :---------: | :---------: |
+| Get number of counters                   | 0           | ✅          |
+| Get counter information                  | 1           | ✅          |
+| Configure matching counters              | 2           | ✅          |
+| Start counters                           | 3           | ✅          |
+| Stop counters                            | 4           | ✅          |
+| Read firmware counter                    | 5           | ✅          |
 
 </details>
 
@@ -53,3 +105,7 @@ There are currently no supported vendor-specific SBI extensions.
 ### Firmware-specific
 
 There are currently no supported firmware-specific SBI extensions.
+
+## License
+
+`sbi` is licensed under the Mozilla Public License 2.0

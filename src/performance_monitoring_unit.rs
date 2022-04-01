@@ -18,13 +18,13 @@ pub fn num_counters() -> usize {
 }
 
 /// Retreive the information associated with a given performance counter.
-/// 
+///
 /// ### Possible errors
-/// 
+///
 /// [`SbiError::InvalidParameter`]: The given [`CounterIndex`] is not valid.
 #[inline]
 #[doc(alias = "counter_get_info", alias = "sbi_pmu_counter_get_info")]
-pub fn get_counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiError> {
+pub fn counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiError> {
     let res = unsafe { ecall1(counter_idx.0, EXTENSION_ID, 1) }?;
     Ok(match (res as isize).is_positive() {
         // Hardware counter
@@ -39,12 +39,12 @@ pub fn get_counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiErr
 
 /// Configure a set of matching performance counters described by the given
 /// [`CounterIndexMask`].
-/// 
+///
 /// ### Possible errors
-/// 
+///
 /// [`SbiError::InvalidParameter`]: One or more of the given counter indices was
 ///     not valid.
-/// 
+///
 /// [`SbiError::NotSupported`]: None of the given counters can monitor the
 ///     specified event.
 #[inline]
@@ -89,8 +89,14 @@ pub fn configure_matching_counters(
 }
 
 /// Start the performance counters described by the given [`CounterIndexMask`].
-/// 
-/// 
+///
+/// ### Possible errors
+///
+/// [`SbiError::InvalidParameter`]: One or more of the counters specified are
+///     not valid.
+///
+/// [`SbiError::AlreadyStarted`]: One or more of the counters specified have
+///     already been started.
 #[inline]
 #[doc(alias = "counter_start", alias = "sbi_pmu_counter_start")]
 pub fn start_counters(
@@ -126,6 +132,15 @@ pub fn start_counters(
     Ok(())
 }
 
+/// Stop the performance counters described by the given [`CounterIndexMask`].
+///
+/// ### Possible errors
+///
+/// [`SbiError::InvalidParameter`]: One or more of the counters specified are
+///     not valid.
+///
+/// [`SbiError::AlreadyStopped`]: One or more of the counters specified have
+///     already been stopped.
 #[inline]
 #[doc(alias = "counter_stop", alias = "sbi_pmu_counter_stop")]
 pub fn stop_counters(
@@ -144,9 +159,15 @@ pub fn stop_counters(
     }
 }
 
+/// Read the current value of the specified [`CounterIndex`].
+///
+/// ### Possible errors
+///
+/// [`SbiError::InvalidParameter`]: One or more of the counters specified are
+///     not valid.
 #[inline]
 #[doc(alias = "counter_fw_read", alias = "sbi_pmu_counter_fw_read")]
-pub fn read_fw_counter(counter_idx: CounterIndex) -> Result<usize, SbiError> {
+pub fn read_firmware_counter(counter_idx: CounterIndex) -> Result<usize, SbiError> {
     unsafe { ecall1(counter_idx.0, EXTENSION_ID, 5) }
 }
 
@@ -198,18 +219,21 @@ impl CounterConfigurationFlags {
 
 impl core::ops::BitOr for CounterConfigurationFlags {
     type Output = Self;
+    #[inline]
     fn bitor(self, rhs: Self) -> Self {
         Self(self.0 | rhs.0)
     }
 }
 
 impl core::ops::BitOrAssign for CounterConfigurationFlags {
+    #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }
 }
 
 impl Default for CounterConfigurationFlags {
+    #[inline]
     fn default() -> Self {
         Self::NONE
     }
@@ -227,18 +251,21 @@ impl CounterStartFlags {
 
 impl core::ops::BitOr for CounterStartFlags {
     type Output = Self;
+    #[inline]
     fn bitor(self, rhs: Self) -> Self {
         Self(self.0 | rhs.0)
     }
 }
 
 impl core::ops::BitOrAssign for CounterStartFlags {
+    #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }
 }
 
 impl Default for CounterStartFlags {
+    #[inline]
     fn default() -> Self {
         Self::NONE
     }
@@ -256,18 +283,21 @@ impl CounterStopFlags {
 
 impl core::ops::BitOr for CounterStopFlags {
     type Output = Self;
+    #[inline]
     fn bitor(self, rhs: Self) -> Self {
         Self(self.0 | rhs.0)
     }
 }
 
 impl core::ops::BitOrAssign for CounterStopFlags {
+    #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }
 }
 
 impl Default for CounterStopFlags {
+    #[inline]
     fn default() -> Self {
         Self::NONE
     }
@@ -328,6 +358,7 @@ pub struct CounterIndex(usize);
 
 impl CounterIndex {
     /// Create a new [`CounterIndex`]
+    #[inline]
     pub fn new(idx: usize) -> Self {
         Self(idx)
     }
@@ -342,7 +373,7 @@ pub enum CounterInfo {
         csr_number: usize,
         /// The CSR width. Equal to one less than the number of the bits used by
         /// the CSR.
-        width: usize
+        width: usize,
     },
     /// The counter is a firmware provided performance counter
     Firmware,
@@ -360,6 +391,7 @@ pub struct EventIndex(usize);
 impl EventIndex {
     /// Create a new [`EventIndex`] from the given [`EventType`] and
     /// [`EventCode`]
+    #[inline]
     pub fn new<T: EventType>(
         #[allow(unused_variables)] event_type: T,
         event_code: <T as EventType>::EventCode,
@@ -410,6 +442,7 @@ pub enum HardwareGeneralEventCode {
 
 impl sealed::Sealed for HardwareGeneralEventCode {}
 impl EventCode for HardwareGeneralEventCode {
+    #[inline]
     fn to_code(self) -> u16 {
         self as u16
     }
@@ -484,6 +517,7 @@ impl HardwareCacheEventCode {
 
     /// Create a new [`HardwareCacheEventCode`] from the cache unit, operation,
     /// and result to monitor
+    #[inline]
     pub const fn new(
         id: HardwareCacheEventCodeId,
         op: HardwareCacheEventCodeOperationId,
@@ -495,6 +529,7 @@ impl HardwareCacheEventCode {
 
 impl sealed::Sealed for HardwareCacheEventCode {}
 impl EventCode for HardwareCacheEventCode {
+    #[inline]
     fn to_code(self) -> u16 {
         self.0
     }
@@ -555,6 +590,7 @@ pub struct HardwareRawEventCode;
 
 impl sealed::Sealed for HardwareRawEventCode {}
 impl EventCode for HardwareRawEventCode {
+    #[inline]
     fn to_code(self) -> u16 {
         0
     }
@@ -601,6 +637,7 @@ pub enum FirmwareEventCode {
 
 impl sealed::Sealed for FirmwareEventCode {}
 impl EventCode for FirmwareEventCode {
+    #[inline]
     fn to_code(self) -> u16 {
         self as u16
     }
