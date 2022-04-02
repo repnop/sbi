@@ -14,9 +14,9 @@ extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
         sbi::hart_state_management::hart_status(target_hart).expect("hart_status"),
         HartStatus::Started
     ) {}
-    common::wait(100);
+    common::wait(1000);
     sbi::ipi::send_ipi(sbi::HartMask::from(target_hart)).expect("send_ipi");
-    common::wait(100);
+    common::wait(1000);
     println!("❌ Other hart did not trigger an exit in time");
     common::exit(1);
 }
@@ -29,8 +29,9 @@ extern "C" fn other_main(_: usize) -> ! {
     loop {}
 }
 
-const SUPERVISOR_SOFTWARE_INTERRUPT: usize = (1 << 63) | 1;
-fn success() -> ! {
+const SUPERVISOR_SOFTWARE_INTERRUPT: usize = (1 << (usize::BITS - 1)) | 1;
+#[repr(align(4))]
+extern "C" fn success() -> ! {
     assert_eq!(
         common::scause(),
         SUPERVISOR_SOFTWARE_INTERRUPT,

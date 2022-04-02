@@ -11,7 +11,7 @@ use crate::{ecall0, ecall1};
 pub const EXTENSION_ID: usize = 0x10;
 
 /// SBI specification version implemented by the SBI implementation
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SbiSpecVersion {
     /// Major version number
     pub major: usize,
@@ -30,7 +30,7 @@ pub fn spec_version() -> SbiSpecVersion {
 
 /// SBI implementation name
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SbiImplId {
     BerkeleyBootLoader,
     OpenSbi,

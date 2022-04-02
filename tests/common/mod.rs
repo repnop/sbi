@@ -25,10 +25,13 @@ unsafe extern "C" fn _start(hart_id: usize, fdt: usize) -> ! {
                 j 1b
             2:
                 lla t2, {boot_hart_id}
-                sd a0, 0(t2)
+                sw a0, 0(t2)
+                lla t2, {fail}
+                csrw stvec, t2
                 j main
         ",
         boot_hart_id = sym BOOT_HART_ID,
+        fail = sym fail,
         options(noreturn),
     );
 }
@@ -82,8 +85,7 @@ pub fn exit(status: u16) -> ! {
 }
 
 pub fn wait(millis: u32) {
-    let mut time: u64;
-    unsafe { core::arch::asm!("csrr {}, time", out(reg) time) };
+    let mut time = time();
 
     // QEMU has a 10 MHz clock
 
@@ -92,36 +94,47 @@ pub fn wait(millis: u32) {
     let target_time = time + hundred_nanos;
 
     while time < target_time {
-        unsafe { core::arch::asm!("csrr {}, time", out(reg) time) };
+        time = self::time();
     }
 }
 
-pub fn set_stvec(f: fn() -> !) {
-    unsafe { core::arch::asm!("csrw stvec, {}", in(reg) f) };
+pub fn time() -> u64 {
+    let time: u64;
+    #[cfg(target_arch = "riscv64")]
+    unsafe {
+        core::arch::asm!("csrr {}, time", out(reg) time)
+    };
+
+    #[cfg(target_arch = "riscv32")]
+    unsafe {
+        let timeh: u32;
+        let timel: u32;
+        core::arch::asm!("csrr {}, timeh", out(reg) timeh);
+        core::arch::asm!("csrr {}, time", out(reg) timel);
+        time = (u64::from(timeh) << 32) | u64::from(timel);
+    };
+
+    time
 }
 
-static mut SECOND_STACK: [u8; 4096] = [0; 4096];
+pub fn set_stvec(f: extern "C" fn() -> !) {
+    unsafe { core::arch::asm!("csrw stvec, {}", in(reg) f) };
+}
 
 #[naked]
 #[rustfmt::skip]
 unsafe extern "C" fn other_entry() -> ! {
     core::arch::asm!(
-        "
-            lla sp, {stack}
-            addi sp, sp, 1024
-            addi sp, sp, 1024
-            addi sp, sp, 1024
-            addi sp, sp, 1024
-            jr a1
-        ",
-        stack = sym SECOND_STACK,
+        "lla sp, __stack_end2",
+        "jr a1",
         options(noreturn),
     )
 }
 
 pub fn start_other_hart(f: extern "C" fn(usize) -> !) {
     let target_hart = if unsafe { BOOT_HART_ID } == 0 { 1 } else { 0 };
-    sbi::hart_state_management::hart_start(target_hart, other_entry as usize, f as usize).unwrap();
+    sbi::hart_state_management::hart_start(target_hart, other_entry as usize, f as usize)
+        .expect("start_hart");
 }
 
 pub fn scause() -> usize {
@@ -130,13 +143,13 @@ pub fn scause() -> usize {
     scause
 }
 
-pub fn trigger_timer_interrupt() -> ! {
-    enable_interrupts();
-    sbi::timer::set_timer(0).expect("set_timer");
-    loop {}
-}
-
 pub fn enable_interrupts() {
     unsafe { core::arch::asm!("csrs sie, {}", in(reg) (1 << 1) | (1 << 5) | (1 << 9)) };
     unsafe { core::arch::asm!("csrsi sstatus, 1 << 1") };
+}
+
+#[repr(align(4))]
+extern "C" fn fail() -> ! {
+    crate::println!("Unexpected trap: {:#X}", scause());
+    exit(1);
 }

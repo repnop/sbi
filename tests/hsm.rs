@@ -44,5 +44,6 @@ extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
 extern "C" fn other_main(_: usize) -> ! {
     HART_BOOTED.store(true, core::sync::atomic::Ordering::Release);
     common::wait(100);
+    #[allow(unreachable_code)]
     match hart_stop().expect("hart_stop") {}
 }

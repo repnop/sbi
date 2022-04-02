@@ -10,7 +10,7 @@
 ENTRY(_start);
 
 SECTIONS {
-    . = 0x80200000;
+    . = 0x80400000;
     .text : {
         PROVIDE(__text_start = .);
         *(.text.init)
@@ -35,6 +35,12 @@ SECTIONS {
         PROVIDE(__stack_end = .);
         . += 1024 * 8;
         PROVIDE(__stack_start = .);
+    }
+
+    .tmp_stack2 : ALIGN(8) {
+        PROVIDE(__stack_end2 = .);
+        . += 1024 * 8;
+        PROVIDE(__stack_start2 = .);
     }
 
     /DISCARD/ : { *(.eh_frame_hdr .eh_frame) }

@@ -29,12 +29,9 @@ pub mod system_reset;
 /// Timer extension
 pub mod timer;
 
-pub use base::{
-    impl_id, impl_version, marchid, mimpid, mvendorid, probe_extension, spec_version,
-    ExtensionAvailability,
-};
 /// A convenience alias to the [`hart_state_management`] module.
 pub use hart_state_management as hsm;
+pub use performance_monitoring_unit as pmu;
 
 /// Error codes returned by SBI calls
 ///
