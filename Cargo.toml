@@ -13,6 +13,10 @@ keywords = ["sbi", "riscv", "osdev"]
 categories = ["embedded", "os"]
 readme = "README.md"
 
+[package.metadata.docs.rs]
+default-target = "riscv64imac-unknown-none-elf"
+targets = ["riscv64imac-unknown-none-elf", "riscv32imac-unknown-none-elf"]
+
 [dependencies]
 
 [[test]]
