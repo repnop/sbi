@@ -1,4 +1,4 @@
-This crate provides a safe, pure-Rust implementation of the RISC-V SBI interface to be used in S-mode software, such as operating system kernels. This crate implements the `v1.0.0` version of the SBI specification and aims to stay up to date with it as newer versions of the specification are released.
+This crate provides a safe, pure-Rust implementation of the RISC-V [Supervisor Binary Interface](https://github.com/riscv-non-isa/riscv-sbi-doc) (SBI) to be used in S-mode software, such as operating system kernels. This crate implements the [`v1.0.0`](https://github.com/riscv-non-isa/riscv-sbi-doc/releases/tag/v1.0.0) version of the SBI specification and aims to stay up to date with it as newer versions of the specification are released.
 
 ## Important safety note
 
