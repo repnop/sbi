@@ -1,11 +1,10 @@
-#![feature(asm_sym, naked_functions, fn_align)]
+#![feature(naked_functions, fn_align)]
 #![no_std]
 #![no_main]
 
 mod common;
 
-#[no_mangle]
-extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
+extern "C" fn main(_hart_id: usize, _fdt: usize) -> ! {
     common::set_stvec(success);
     common::enable_interrupts();
     sbi::timer::set_timer(common::time() + 100).expect("set_timer");
@@ -14,6 +13,7 @@ extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
 }
 
 const SUPERVISOR_TIMER_INTERRUPT: usize = (1 << (usize::BITS - 1)) | 5;
+
 #[repr(align(4))]
 extern "C" fn success() -> ! {
     assert_eq!(

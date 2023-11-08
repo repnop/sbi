@@ -1,4 +1,4 @@
-#![feature(asm_sym, naked_functions, fn_align)]
+#![feature(naked_functions, fn_align)]
 #![no_std]
 #![no_main]
 

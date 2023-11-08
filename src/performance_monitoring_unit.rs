@@ -5,7 +5,7 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::{ecall0, ecall1, SbiError};
+use crate::{ecall0, ecall1, ecall3, SbiError};
 
 /// Performance Monitoring Unit extension ID
 pub const EXTENSION_ID: usize = 0x504D55;
@@ -159,16 +159,122 @@ pub fn stop_counters(
     }
 }
 
-/// Read the current value of the specified [`CounterIndex`].
+/// Read the current value of the specified [`CounterIndex`]. On RV32 this will
+/// return the lower 32-bits of the firmware counter.
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: One or more of the counters specified are
-///     not valid.
+/// [`SbiError::InvalidParameter`]: The specified counter is not valid
 #[inline]
 #[doc(alias = "counter_fw_read", alias = "sbi_pmu_counter_fw_read")]
 pub fn read_firmware_counter(counter_idx: CounterIndex) -> Result<usize, SbiError> {
     unsafe { ecall1(counter_idx.0, EXTENSION_ID, 5) }
+}
+
+/// Read the high bits of the specified [`CounterIndex`] firmware counter.
+/// Always returns zero on >=RV64.
+///
+/// ### Possible errors
+///
+/// [`SbiError::InvalidParameter`]: The specified counter is not valid.
+#[inline]
+#[doc(alias = "counter_fw_read_hi", alias = "sbi_pmu_counter_fw_read_hi")]
+pub fn read_firmware_counter_hi(counter_idx: CounterIndex) -> Result<usize, SbiError> {
+    unsafe { ecall1(counter_idx.0, EXTENSION_ID, 6) }
+}
+
+/// Set the shared memory region address for PMU snapshotting.
+///
+/// ### Safety
+///
+/// This function allows having the SBI write to arbitrary physical memory, and
+/// thus can cause undefined behavior if used incorrectly.
+///
+/// ### Possible errors
+///
+/// [`SbiError::InvalidParameter`]: The memory region described by the given
+///     parameters is not accessible to S-mode.
+#[inline]
+#[doc(alias = "snapshot_set_shmem", alias = "sbi_pmu_snapshot_set_shmem")]
+pub unsafe fn set_snapshot_shared_memory_region(
+    shmem_phys_lo: usize,
+    shmem_phys_hi: usize,
+    flags: SnapshotFlags,
+) -> Result<usize, SbiError> {
+    unsafe { ecall3(shmem_phys_lo, shmem_phys_hi, flags.0, EXTENSION_ID, 6) }
+}
+
+/// A convenience function for [`set_snapshot_shared_memory_region`] that allows
+/// passing a (***physically-addressed***) pointer instead of the raw address in
+/// two parts. This function is not appropriate to call for platforms where the
+/// amount of physical memory is greater than the amount of memory a pointer can
+/// address.
+///
+/// ### Safety
+///
+/// This function allows having the SBI write to arbitrary physical memory, and
+/// thus can cause undefined behavior if used incorrectly.
+///
+/// ### Possible errors
+///
+/// [`SbiError::InvalidParameter`]: The memory region described by the given
+///     parameters is not accessible to S-mode.
+#[inline]
+#[doc(alias = "snapshot_set_shmem", alias = "sbi_pmu_snapshot_set_shmem")]
+pub unsafe fn set_snapshot_shared_memory_region_ptr(
+    shared_memory_ptr: *mut SnapshotSharedMemory,
+    flags: SnapshotFlags,
+) -> Result<usize, SbiError> {
+    unsafe { set_snapshot_shared_memory_region(shared_memory_ptr as usize, 0, flags) }
+}
+
+/// Flags for PMU shared memory snapshotting
+///
+/// There are currently no valid flags for this parameter, so always construct it with [`SnapshotFlags::NONE`]
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SnapshotFlags(usize);
+
+impl SnapshotFlags {
+    /// No flags
+    pub const NONE: Self = Self(0);
+}
+
+/// A struct describing the layout of a PMU snapshot shared memory region
+#[derive(Clone)]
+#[repr(C)]
+pub struct SnapshotSharedMemory {
+    /// Bitmap of counters which have overflowed. This is valid only if the
+    /// `Sscofpmf`` ISA extension is available. Otherwise, it must be zero.
+    pub counter_overflow_bitmap: u64,
+    /// Array of hardware/firmware associated counters
+    pub counter_values: [u64; 64],
+    _resv: [u8; 3576],
+}
+
+impl SnapshotSharedMemory {
+    /// Create a new [`SnapshotSharedMemory`] instance
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl core::default::Default for SnapshotSharedMemory {
+    fn default() -> Self {
+        Self {
+            counter_overflow_bitmap: 0,
+            counter_values: [0; 64],
+            _resv: [0; 3576],
+        }
+    }
+}
+
+impl core::fmt::Debug for SnapshotSharedMemory {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SnapshotSharedMemory")
+            .field("counter_overflow_bitmap", &self.counter_overflow_bitmap)
+            .field("counter_values", &self.counter_values)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Counter configuration flags
@@ -398,6 +504,14 @@ impl EventIndex {
     ) -> Self {
         Self(((T::TYPE_VALUE & 0b1111) << 16) | (event_code.to_code() as usize))
     }
+
+    /// Create a new [`EventIndex`] from the raw event type and code. This is
+    /// required when constructing SBI implementation specific firmware event
+    /// indices.
+    #[inline]
+    pub fn from_raw(event_type: u8, event_code: u16) -> Self {
+        Self(((usize::from(event_type) & 0b1111) << 16) | usize::from(event_code))
+    }
 }
 
 /// A type of performance monitoring event
@@ -426,6 +540,7 @@ impl EventType for HardwareGeneralEvent {
 /// A general hardware performance monitoring event code
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(missing_docs)]
+#[non_exhaustive]
 #[repr(u16)]
 pub enum HardwareGeneralEventCode {
     CpuCycles = 1,
@@ -537,6 +652,7 @@ impl EventCode for HardwareCacheEventCode {
 
 /// The hardware cache unit to monitor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 #[repr(u16)]
 pub enum HardwareCacheEventCodeId {
     /// First level data cache
@@ -609,6 +725,7 @@ impl EventType for FirmwareEvent {
 /// Firmware performance monitoring event metrics
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(missing_docs)]
+#[non_exhaustive]
 #[repr(u16)]
 pub enum FirmwareEventCode {
     MisalignedLoad = 0,
@@ -633,6 +750,7 @@ pub enum FirmwareEventCode {
     HfenceVvmaReceived = 19,
     HfenceVvmaAsidSent = 20,
     HfenceVvmaAsidReceived = 21,
+    Platform = 65535,
 }
 
 impl sealed::Sealed for FirmwareEventCode {}

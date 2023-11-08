@@ -14,6 +14,8 @@ compile_error!("SBI is only available on RISC-V platforms");
 
 /// Required base SBI functionality
 pub mod base;
+/// Debug Console extension
+pub mod debug_console;
 /// Hart State Management extension
 pub mod hart_state_management;
 /// IPI extension
@@ -31,6 +33,7 @@ pub mod timer;
 
 /// A convenience alias to the [`hart_state_management`] module.
 pub use hart_state_management as hsm;
+/// A convenience alias to the [`performance_monitoring_unit`] module;
 pub use performance_monitoring_unit as pmu;
 
 /// Error codes returned by SBI calls
