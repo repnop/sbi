@@ -15,7 +15,7 @@ pub const EXTENSION_ID: usize = 0x735049;
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The `hart_mask` base or any hart IDs
+/// [`SbiError::INVALID_PARAMETER`]: The `hart_mask` base or any hart IDs
 ///     specified by `hart_mask` are invalid or unaccessible from supervisor
 ///     mode
 #[inline]

@@ -70,9 +70,9 @@ impl ResetReason {
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::NotSupported`]: The [`ResetType`] is valid but not implemented.
+/// [`SbiError::NOT_SUPPORTED`]: The [`ResetType`] is valid but not implemented.
 ///
-/// [`SbiError::Failed`]: The system reset request failed for an unknown reason.
+/// [`SbiError::FAILED`]: The system reset request failed for an unknown reason.
 pub fn system_reset(
     kind: ResetType,
     reason: ResetReason,

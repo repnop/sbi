@@ -73,7 +73,7 @@ pub fn remote_sfence_vma_asid(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::NotSupported`]: The function is either unimplemented or the
+/// [`SbiError::NOT_SUPPORTED`]: The function is either unimplemented or the
 ///     target harts do not implement the hypervisor extension.
 #[inline]
 #[doc(alias = "sbi_remote_hfence_gvma_vmid")]
@@ -104,7 +104,7 @@ pub fn remote_hfence_gvma_vmid(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::NotSupported`]: The function is either unimplemented or the
+/// [`SbiError::NOT_SUPPORTED`]: The function is either unimplemented or the
 ///     target harts do not implement the hypervisor extension.
 #[inline]
 #[doc(alias = "sbi_remote_hfence_gvma")]
@@ -134,7 +134,7 @@ pub fn remote_hfence_gvma(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::NotSupported`]: The function is either unimplemented or the
+/// [`SbiError::NOT_SUPPORTED`]: The function is either unimplemented or the
 ///     target harts do not implement the hypervisor extension.
 #[inline]
 #[doc(alias = "sbi_remote_hfence_vvma_asid")]
@@ -166,7 +166,7 @@ pub fn remote_hfence_vvma_asid(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::NotSupported`]: The function is either unimplemented or the
+/// [`SbiError::NOT_SUPPORTED`]: The function is either unimplemented or the
 ///     target harts do not implement the hypervisor extension.
 #[inline]
 #[doc(alias = "sbi_remote_hfence_vvma")]

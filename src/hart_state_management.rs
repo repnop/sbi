@@ -17,16 +17,16 @@ pub const EXTENSION_ID: usize = 0x48534D;
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidAddress`]: `start_address` is an invalid address because
+/// [`SbiError::INVALID_ADDRESS`]: `start_address` is an invalid address because
 ///     it is either an invalid physical address or execution is prohibited by
 ///     physical memory protection.
 ///
-/// [`SbiError::InvalidParameter`]: The specified hart ID is either not valid or
+/// [`SbiError::INVALID_PARAMETER`]: The specified hart ID is either not valid or
 ///     cannot be started in S-mode.
 ///
-/// [`SbiError::AlreadyAvailable`]: The specified hart ID is already started.
+/// [`SbiError::ALREADY_AVAILABLE`]: The specified hart ID is already started.
 ///
-/// [`SbiError::Failed`]: Start request failed for unknown reasons.
+/// [`SbiError::FAILED`]: Start request failed for unknown reasons.
 pub fn hart_start(hart_id: usize, start_addr: usize, private: usize) -> Result<(), SbiError> {
     unsafe { ecall3(hart_id, start_addr, private, EXTENSION_ID, 0).map(drop) }
 }
@@ -37,7 +37,7 @@ pub fn hart_start(hart_id: usize, start_addr: usize, private: usize) -> Result<(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::Failed`]: The request failed for an unknown reason.
+/// [`SbiError::FAILED`]: The request failed for an unknown reason.
 pub fn hart_stop() -> Result<core::convert::Infallible, SbiError> {
     match unsafe { ecall0(EXTENSION_ID, 1) } {
         Ok(_) => unreachable!("SBI returned `Ok` when stopping the current hart"),
@@ -49,7 +49,7 @@ pub fn hart_stop() -> Result<core::convert::Infallible, SbiError> {
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The specified hart ID is not valid.
+/// [`SbiError::INVALID_PARAMETER`]: The specified hart ID is not valid.
 pub fn hart_status(hart_id: usize) -> Result<HartStatus, SbiError> {
     unsafe { ecall1(hart_id, EXTENSION_ID, 2).map(HartStatus::from_usize) }
 }
@@ -75,15 +75,15 @@ pub fn hart_status(hart_id: usize) -> Result<HartStatus, SbiError> {
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidAddress`]: An invalid address was given for
+/// [`SbiError::INVALID_ADDRESS`]: An invalid address was given for
 ///     `resume_address` because it was either: an invalid physical address, or
 ///     the resume address is probited by Physical Memory Protection (PMP) to
 ///     run in supervisor mode.
 ///
-/// [`SbiError::NotSupported`]: The given `suspend_type` is valid but not
+/// [`SbiError::NOT_SUPPORTED`]: The given `suspend_type` is valid but not
 ///     implemented.
 ///
-/// [`SbiError::Failed`]: The suspension request failed for an unknown reason.
+/// [`SbiError::FAILED`]: The suspension request failed for an unknown reason.
 pub fn hart_suspend(suspend_type: SuspendType) -> Result<(), SbiError> {
     let (value, resume_addr, opaque) = suspend_type.to_values();
     unsafe { ecall3(value as usize, resume_addr, opaque, EXTENSION_ID, 3).map(drop) }

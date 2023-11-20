@@ -21,7 +21,7 @@ pub fn num_counters() -> usize {
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The given [`CounterIndex`] is not valid.
+/// [`SbiError::INVALID_PARAMETER`]: The given [`CounterIndex`] is not valid.
 #[inline]
 #[doc(alias = "counter_get_info", alias = "sbi_pmu_counter_get_info")]
 pub fn counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiError> {
@@ -42,10 +42,10 @@ pub fn counter_info(counter_idx: CounterIndex) -> Result<CounterInfo, SbiError> 
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: One or more of the given counter indices was
+/// [`SbiError::INVALID_PARAMETER`]: One or more of the given counter indices was
 ///     not valid.
 ///
-/// [`SbiError::NotSupported`]: None of the given counters can monitor the
+/// [`SbiError::NOT_SUPPORTED`]: None of the given counters can monitor the
 ///     specified event.
 #[inline]
 #[doc(
@@ -92,10 +92,10 @@ pub fn configure_matching_counters(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: One or more of the counters specified are
+/// [`SbiError::INVALID_PARAMETER`]: One or more of the counters specified are
 ///     not valid.
 ///
-/// [`SbiError::AlreadyStarted`]: One or more of the counters specified have
+/// [`SbiError::ALREADY_STARTED`]: One or more of the counters specified have
 ///     already been started.
 #[inline]
 #[doc(alias = "counter_start", alias = "sbi_pmu_counter_start")]
@@ -136,10 +136,10 @@ pub fn start_counters(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: One or more of the counters specified are
+/// [`SbiError::INVALID_PARAMETER`]: One or more of the counters specified are
 ///     not valid.
 ///
-/// [`SbiError::AlreadyStopped`]: One or more of the counters specified have
+/// [`SbiError::ALREADY_STOPPED`]: One or more of the counters specified have
 ///     already been stopped.
 #[inline]
 #[doc(alias = "counter_stop", alias = "sbi_pmu_counter_stop")]
@@ -164,7 +164,7 @@ pub fn stop_counters(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The specified counter is not valid
+/// [`SbiError::INVALID_PARAMETER`]: The specified counter is not valid
 #[inline]
 #[doc(alias = "counter_fw_read", alias = "sbi_pmu_counter_fw_read")]
 pub fn read_firmware_counter(counter_idx: CounterIndex) -> Result<usize, SbiError> {
@@ -176,7 +176,7 @@ pub fn read_firmware_counter(counter_idx: CounterIndex) -> Result<usize, SbiErro
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The specified counter is not valid.
+/// [`SbiError::INVALID_PARAMETER`]: The specified counter is not valid.
 #[inline]
 #[doc(alias = "counter_fw_read_hi", alias = "sbi_pmu_counter_fw_read_hi")]
 pub fn read_firmware_counter_hi(counter_idx: CounterIndex) -> Result<usize, SbiError> {
@@ -192,7 +192,7 @@ pub fn read_firmware_counter_hi(counter_idx: CounterIndex) -> Result<usize, SbiE
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The memory region described by the given
+/// [`SbiError::INVALID_PARAMETER`]: The memory region described by the given
 ///     parameters is not accessible to S-mode.
 #[inline]
 #[doc(alias = "snapshot_set_shmem", alias = "sbi_pmu_snapshot_set_shmem")]
@@ -217,7 +217,7 @@ pub unsafe fn set_snapshot_shared_memory_region(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The memory region described by the given
+/// [`SbiError::INVALID_PARAMETER`]: The memory region described by the given
 ///     parameters is not accessible to S-mode.
 #[inline]
 #[doc(alias = "snapshot_set_shmem", alias = "sbi_pmu_snapshot_set_shmem")]

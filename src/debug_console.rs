@@ -26,12 +26,12 @@ pub const EXTENSION_ID: usize = 0x4442434E;
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The memory region described by the given
+/// [`SbiError::INVALID_PARAMETER`]: The memory region described by the given
 ///     parameters is not accessible to supervisor mode.
 ///
-/// [`SbiError::Denied`]: Writing to the debug console is not allowed.
+/// [`SbiError::DENIED`]: Writing to the debug console is not allowed.
 ///
-/// [`SbiError::Failed`]: Writing failed due to I/O errors.
+/// [`SbiError::FAILED`]: Writing failed due to I/O errors.
 #[inline]
 #[doc(alias = "sbi_debug_console_write")]
 pub unsafe fn write(
@@ -66,12 +66,12 @@ pub unsafe fn write(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The memory region described by the given
+/// [`SbiError::INVALID_PARAMETER`]: The memory region described by the given
 ///     pointer is not accessible to supervisor mode.
 ///
-/// [`SbiError::Denied`]: Writing to the debug console is not allowed.
+/// [`SbiError::DENIED`]: Writing to the debug console is not allowed.
 ///
-/// [`SbiError::Failed`]: Writing failed due to I/O errors.
+/// [`SbiError::FAILED`]: Writing failed due to I/O errors.
 #[inline]
 #[doc(alias = "sbi_debug_console_write")]
 pub unsafe fn write_ptr(data: NonNull<[u8]>) -> Result<usize, SbiError> {
@@ -93,12 +93,12 @@ pub unsafe fn write_ptr(data: NonNull<[u8]>) -> Result<usize, SbiError> {
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The memory region described by the given
+/// [`SbiError::INVALID_PARAMETER`]: The memory region described by the given
 ///     parameters is not accessible to supervisor mode.
 ///
-/// [`SbiError::Denied`]: Reads from the debug console is not allowed.
+/// [`SbiError::DENIED`]: Reads from the debug console is not allowed.
 ///
-/// [`SbiError::Failed`]: Reading failed due to I/O errors.
+/// [`SbiError::FAILED`]: Reading failed due to I/O errors.
 #[inline]
 #[doc(alias = "sbi_debug_console_read")]
 pub unsafe fn read(
@@ -133,12 +133,12 @@ pub unsafe fn read(
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::InvalidParameter`]: The memory region described by the given
+/// [`SbiError::INVALID_PARAMETER`]: The memory region described by the given
 ///     pointer is not accessible to supervisor mode.
 ///
-/// [`SbiError::Denied`]: Writing to the debug console is not allowed.
+/// [`SbiError::DENIED`]: Writing to the debug console is not allowed.
 ///
-/// [`SbiError::Failed`]: Writing failed due to I/O errors.
+/// [`SbiError::FAILED`]: Writing failed due to I/O errors.
 #[inline]
 #[doc(alias = "sbi_debug_console_read")]
 pub unsafe fn read_ptr(buffer: NonNull<[u8]>) -> Result<usize, SbiError> {
@@ -151,9 +151,9 @@ pub unsafe fn read_ptr(buffer: NonNull<[u8]>) -> Result<usize, SbiError> {
 ///
 /// ### Possible errors
 ///
-/// [`SbiError::Denied`]: Writing to the debug console is not allowed.
+/// [`SbiError::DENIED`]: Writing to the debug console is not allowed.
 ///
-/// [`SbiError::Failed`]: Writing failed due to I/O errors.
+/// [`SbiError::FAILED`]: Writing failed due to I/O errors.
 #[inline]
 #[doc(alias = "sbi_debug_console_write_byte")]
 pub fn write_byte(byte: u8) -> Result<usize, SbiError> {
