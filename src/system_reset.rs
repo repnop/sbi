@@ -5,13 +5,14 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::{ecall2, SbiError};
+use crate::{ecall2, RestrictedRange, SbiError};
 
 /// System reset extension ID
 pub const EXTENSION_ID: usize = 0x53525354;
 
 /// The type of reset to perform
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum ResetType {
     /// Shutdown the system
     Shutdown,
@@ -19,48 +20,42 @@ pub enum ResetType {
     ColdReboot,
     /// Reset processors and some hardware
     WarmReboot,
-    /// Platform specific reset type. The variant value is a value within the
-    /// range `0x00000000..=0x0FFFFFFF`. A value outside of that range will be
-    /// clamped to the maximum possible valid value for this reset type.
-    PlatformSpecific(u32),
+    /// Platform specific reset type
+    PlatformSpecific(RestrictedRange<0xF0000000, 0xFFFFFFFF>),
 }
 
-impl ResetType {
-    fn to_u32(self) -> u32 {
-        match self {
+impl From<ResetType> for u32 {
+    fn from(value: ResetType) -> Self {
+        match value {
             ResetType::Shutdown => 0,
             ResetType::ColdReboot => 1,
             ResetType::WarmReboot => 2,
-            ResetType::PlatformSpecific(n) => n.min(0x0FFFFFFF) + 0xF0000000,
+            ResetType::PlatformSpecific(n) => n.0,
         }
     }
 }
 
 /// The reason for performing the reset
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum ResetReason {
     /// No reason for reset
     NoReason,
     /// System failure
     SystemFailure,
-    /// SBI implementation specific reset reason. The variant value is a value
-    /// within the range `0x00000000..=0x0FFFFFFF`. A value outside of that
-    /// range will be clamped to the maximum possible valid value for this reset
-    /// reason type.
-    SbiSpecific(u32),
-    /// Platform specific reset reason. The variant value is a value within the
-    /// range `0x00000000..=0x0FFFFFFF`. A value outside of that range will be
-    /// clamped to the maximum possible valid value for this reset reason type.
-    PlatformSpecific(u32),
+    /// SBI implementation specific reset reason
+    SbiSpecific(RestrictedRange<0xE0000000, 0xEFFFFFFF>),
+    /// Platform specific reset reason
+    PlatformSpecific(RestrictedRange<0xF0000000, 0xFFFFFFFF>),
 }
 
-impl ResetReason {
-    fn to_u32(self) -> u32 {
-        match self {
+impl From<ResetReason> for u32 {
+    fn from(value: ResetReason) -> Self {
+        match value {
             ResetReason::NoReason => 0,
             ResetReason::SystemFailure => 1,
-            ResetReason::SbiSpecific(n) => n.min(0x0FFFFFFF) + 0xE0000000,
-            ResetReason::PlatformSpecific(n) => n.min(0x0FFFFFFF) + 0xF0000000,
+            ResetReason::SbiSpecific(n) => n.0,
+            ResetReason::PlatformSpecific(n) => n.0,
         }
     }
 }
@@ -79,8 +74,8 @@ pub fn system_reset(
 ) -> Result<core::convert::Infallible, SbiError> {
     match unsafe {
         ecall2(
-            kind.to_u32() as usize,
-            reason.to_u32() as usize,
+            u32::from(kind) as usize,
+            u32::from(reason) as usize,
             EXTENSION_ID,
             0,
         )

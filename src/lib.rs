@@ -14,6 +14,8 @@ compile_error!("SBI is only available on RISC-V platforms");
 
 /// Required base SBI functionality
 pub mod base;
+/// Collaborative Processor Performance Control
+pub mod collaborative_processor_performance_control;
 /// Debug Console extension
 pub mod debug_console;
 /// Hart State Management extension
@@ -22,17 +24,23 @@ pub mod hart_state_management;
 pub mod ipi;
 /// Legacy SBI calls
 pub mod legacy;
+/// Nested Acceleration extension
+pub mod nested_acceleration;
 /// Performance Monitoring Unit extension
 pub mod performance_monitoring_unit;
 /// RFENCE extension
 pub mod rfence;
 /// System Reset extension
 pub mod system_reset;
+/// System Suspend extension
+pub mod system_suspend;
 /// Timer extension
 pub mod timer;
 
-use core::num::NonZeroIsize;
+use core::{num::NonZeroIsize, ptr::NonNull};
 
+/// A convenience alias to the [`collaborative_processor_performance_control`] module.
+pub use collaborative_processor_performance_control as cbbc;
 /// A convenience alias to the [`hart_state_management`] module.
 pub use hart_state_management as hsm;
 /// A convenience alias to the [`performance_monitoring_unit`] module;
@@ -168,6 +176,78 @@ macro_rules! hart_mask {
         $(hart_mask = hart_mask.with($hart_id);)*
         hart_mask
     }};
+}
+
+/// A value restricted to a given range
+#[repr(transparent)]
+pub struct RestrictedRange<const MIN: u32, const MAX: u32>(u32);
+
+impl<const MIN: u32, const MAX: u32> RestrictedRange<MIN, MAX> {
+    /// Create a new [`RestrictedRange`] value
+    ///
+    /// ## Panics
+    ///
+    /// This function will panic if the provided value is outside of the range
+    /// of the type.
+    pub const fn new(value: u32) -> Self {
+        if value < MIN || value > MAX {
+            panic!("invalid value supplied to `PlatformSpecific::new`")
+        }
+
+        Self(value)
+    }
+}
+
+impl<const MIN: u32, const MAX: u32> From<RestrictedRange<MIN, MAX>> for u32 {
+    fn from(value: RestrictedRange<MIN, MAX>) -> Self {
+        value.0
+    }
+}
+
+impl<const MIN: u32, const MAX: u32> Clone for RestrictedRange<MIN, MAX> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<const MIN: u32, const MAX: u32> Copy for RestrictedRange<MIN, MAX> {}
+
+impl<const MIN: u32, const MAX: u32> core::fmt::Debug for RestrictedRange<MIN, MAX> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "RestrictedRange<MIN={MIN:#X}, MAX={MAX:#X}>({:#X})",
+            self.0
+        )
+    }
+}
+
+/// Representation of a physical address
+#[repr(transparent)]
+pub struct PhysicalAddress<T>(usize, core::marker::PhantomData<*mut T>);
+
+impl<T> PhysicalAddress<T> {
+    /// Create a new [`PhysicalAddress`] from the raw integer value
+    pub fn new(value: usize) -> Self {
+        Self(value, core::marker::PhantomData)
+    }
+
+    /// Create a new [`PhysicalAddress`] from a pointer value
+    pub fn from_ptr(ptr: *mut T) -> Self {
+        Self(ptr as usize, core::marker::PhantomData)
+    }
+}
+
+impl<T> From<*mut T> for PhysicalAddress<T> {
+    fn from(value: *mut T) -> Self {
+        Self::from_ptr(value)
+    }
+}
+
+impl<T> From<NonNull<T>> for PhysicalAddress<T> {
+    fn from(value: NonNull<T>) -> Self {
+        Self::from_ptr(value.as_ptr())
+    }
 }
 
 /// A zero-argument `ecall` with the given extension and function IDs.

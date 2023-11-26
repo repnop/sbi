@@ -45,13 +45,13 @@ pub fn hart_stop() -> Result<core::convert::Infallible, SbiError> {
     }
 }
 
-/// Retrieve the status of the specified hart ID.
+/// Retrieve the state of the specified hart ID.
 ///
 /// ### Possible errors
 ///
 /// [`SbiError::INVALID_PARAMETER`]: The specified hart ID is not valid.
-pub fn hart_status(hart_id: usize) -> Result<HartStatus, SbiError> {
-    unsafe { ecall1(hart_id, EXTENSION_ID, 2).map(HartStatus::from_usize) }
+pub fn hart_state(hart_id: usize) -> Result<HartState, SbiError> {
+    unsafe { ecall1(hart_id, EXTENSION_ID, 2).map(HartState::from_usize) }
 }
 
 /// Places the current hart into a suspended or low power state specified by the
@@ -149,9 +149,10 @@ impl SuspendType {
     }
 }
 
-/// Execution status for a hart
+/// Execution state for a hart
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum HartStatus {
+#[non_exhaustive]
+pub enum HartState {
     /// The hart is powered on and executing normally
     Started,
     /// The hart is currently not executing in supervisor mode or any less
@@ -166,21 +167,21 @@ pub enum HartStatus {
     /// A suspend request is pending for the hart
     SuspendPending,
     /// An event has caused the hart to begin resuming normal execution
-    /// ([`HartStatus::Started`])
+    /// ([`HartState::Started`])
     ResumePending,
 }
 
-impl HartStatus {
+impl HartState {
     fn from_usize(n: usize) -> Self {
         match n {
-            0 => HartStatus::Started,
-            1 => HartStatus::Stopped,
-            2 => HartStatus::StartRequestPending,
-            3 => HartStatus::StopRequestPending,
-            4 => HartStatus::Suspended,
-            5 => HartStatus::SuspendPending,
-            6 => HartStatus::ResumePending,
-            n => unreachable!("invalid hart status returned by SBI: {}", n),
+            0 => HartState::Started,
+            1 => HartState::Stopped,
+            2 => HartState::StartRequestPending,
+            3 => HartState::StopRequestPending,
+            4 => HartState::Suspended,
+            5 => HartState::SuspendPending,
+            6 => HartState::ResumePending,
+            n => unreachable!("invalid hart state returned by SBI: {}", n),
         }
     }
 }
