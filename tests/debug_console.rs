@@ -4,6 +4,8 @@
 
 use core::ptr::NonNull;
 
+use sbi::PhysicalAddress;
+
 mod common;
 
 static WRITE_OK: &str = "🆗 Successfully wrote to console with write_ptr";
@@ -13,7 +15,7 @@ extern "C" fn main(_hart_id: usize, _fdt: usize) -> ! {
     let mut buf = &mut [0u8; 256];
 
     let read =
-        unsafe { sbi::debug_console::read_ptr(NonNull::new(buf).unwrap()).expect("read ok") };
+        unsafe { sbi::debug_console::read_ptr(PhysicalAddress::from_ptr(buf)).expect("read ok") };
 
     assert_eq!(
         core::str::from_utf8(&mut buf[..read]).unwrap(),
@@ -24,9 +26,9 @@ extern "C" fn main(_hart_id: usize, _fdt: usize) -> ! {
     println!("🆗 Successfully read test input");
 
     unsafe {
-        sbi::debug_console::write_ptr(
-            NonNull::new(WRITE_OK.as_bytes() as *const [u8] as *mut [u8]).unwrap(),
-        )
+        sbi::debug_console::write_ptr(PhysicalAddress::from_ptr(
+            WRITE_OK.as_bytes() as *const [u8] as *mut [u8],
+        ))
         .expect("write ok");
     }
 

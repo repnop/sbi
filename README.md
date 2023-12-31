@@ -95,6 +95,45 @@ Extension implementation state legend:
 | Stop counters               |      4      |     ✅      |
 | Read firmware counter       |      5      |     ✅      |
 
+#### Debug Console ✅
+
+| Function           | Function ID | Implemented |
+| ------------------ | :---------: | :---------: |
+| Console write      |      0      |     ✅      |
+| Console read       |      1      |     ✅      |
+| Console write byte |      2      |     ✅      |
+
+#### System Suspend ✅
+
+| Function       | Function ID | Implemented |
+| -------------- | :---------: | :---------: |
+| System suspend |      0      |     ✅      |
+
+#### Collaborative Processor Performance Control ✅
+
+| Function                     | Function ID | Implemented |
+| ---------------------------- | :---------: | :---------: |
+| Probe CPPC register          |      0      |     ✅      |
+| Read CPPC register           |      1      |     ✅      |
+| Read CPPC register high bits |      2      |     ✅      |
+| Write CPPC register          |      3      |     ✅      |
+
+#### Nested Acceleration Extension ❌
+
+| Function                                   | Function ID | Implemented |
+| ------------------------------------------ | :---------: | :---------: |
+| Probe nested acceleration feature          |      0      |     ❌      |
+| Set nested acceleration shared memory      |      1      |     ❌      |
+| Synchronize shared memory CSRs             |      2      |     ❌      |
+| Synchronize shared memory HFENCEs          |      3      |     ❌      |
+| Synchronize shared memory and emulate SRET |      4      |     ❌      |
+
+#### Steal-Time Accounting ❌
+
+| Function                             | Function ID | Implemented |
+| ------------------------------------ | :---------: | :---------: |
+| Set steal-time shared memory address |      0      |     ❌      |
+
 </details>
 
 ### Experimental, vendor-specific, and firmware-specific extensions

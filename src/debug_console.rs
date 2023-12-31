@@ -5,8 +5,7 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::{ecall1, ecall3, SbiError};
-use core::ptr::NonNull;
+use crate::{ecall1, ecall3, PhysicalAddress, SbiError};
 
 /// The Debug Console extension ID
 pub const EXTENSION_ID: usize = 0x4442434E;
@@ -35,15 +34,15 @@ pub const EXTENSION_ID: usize = 0x4442434E;
 #[inline]
 #[doc(alias = "sbi_debug_console_write")]
 pub unsafe fn write(
+    base_addr_lo: PhysicalAddress<u8>,
+    base_addr_hi: PhysicalAddress<u8>,
     num_bytes: usize,
-    physical_base_addr_lo: usize,
-    physical_base_addr_hi: usize,
 ) -> Result<usize, SbiError> {
     unsafe {
         ecall3(
             num_bytes,
-            physical_base_addr_lo,
-            physical_base_addr_hi,
+            base_addr_lo.0 as usize,
+            base_addr_hi.0 as usize,
             EXTENSION_ID,
             0,
         )
@@ -51,8 +50,8 @@ pub unsafe fn write(
 }
 
 /// A convenience wrapper for `debug_console_write` which takes a single
-/// non-null slice instead of the manual length and address parameters. This
-/// slice ***MUST*** point into physical memory, and any pointers which are
+/// physical slice pointer instead of the manual length and address parameters.
+/// This slice ***MUST*** point into physical memory, and any pointers which are
 /// virtual pointers that overlap with the physical address space can cause
 /// undefined behavior.
 ///
@@ -74,8 +73,14 @@ pub unsafe fn write(
 /// [`SbiError::FAILED`]: Writing failed due to I/O errors.
 #[inline]
 #[doc(alias = "sbi_debug_console_write")]
-pub unsafe fn write_ptr(data: NonNull<[u8]>) -> Result<usize, SbiError> {
-    unsafe { write(data.len(), data.as_ptr().cast::<u8>() as usize, 0) }
+pub unsafe fn write_ptr(data: PhysicalAddress<[u8]>) -> Result<usize, SbiError> {
+    unsafe {
+        write(
+            PhysicalAddress::from_ptr(data.as_ptr()),
+            PhysicalAddress::new(0),
+            data.len(),
+        )
+    }
 }
 
 /// Perform a read from the debug console of size `num_bytes` to the given
@@ -102,15 +107,15 @@ pub unsafe fn write_ptr(data: NonNull<[u8]>) -> Result<usize, SbiError> {
 #[inline]
 #[doc(alias = "sbi_debug_console_read")]
 pub unsafe fn read(
+    physical_base_addr_lo: PhysicalAddress<u8>,
+    physical_base_addr_hi: PhysicalAddress<u8>,
     num_bytes: usize,
-    physical_base_addr_lo: usize,
-    physical_base_addr_hi: usize,
 ) -> Result<usize, SbiError> {
     unsafe {
         ecall3(
             num_bytes,
-            physical_base_addr_lo,
-            physical_base_addr_hi,
+            physical_base_addr_lo.0 as usize,
+            physical_base_addr_hi.0 as usize,
             EXTENSION_ID,
             1,
         )
@@ -141,8 +146,14 @@ pub unsafe fn read(
 /// [`SbiError::FAILED`]: Writing failed due to I/O errors.
 #[inline]
 #[doc(alias = "sbi_debug_console_read")]
-pub unsafe fn read_ptr(buffer: NonNull<[u8]>) -> Result<usize, SbiError> {
-    unsafe { read(buffer.len(), buffer.as_ptr().cast::<u8>() as usize, 0) }
+pub unsafe fn read_ptr(buffer: PhysicalAddress<[u8]>) -> Result<usize, SbiError> {
+    unsafe {
+        read(
+            PhysicalAddress::from_ptr(buffer.as_ptr()),
+            PhysicalAddress::new(0),
+            buffer.len(),
+        )
+    }
 }
 
 /// Write a single byte to the debug console. This call is blocking and will

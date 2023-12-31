@@ -72,7 +72,7 @@ pub unsafe fn system_suspend(
     let ret = unsafe {
         ecall3(
             usize::try_from(u32::from(sleep_type)).unwrap(),
-            resume_addr.0,
+            resume_addr.0 as usize,
             opaque,
             EXTENSION_ID,
             0,

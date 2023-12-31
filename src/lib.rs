@@ -24,8 +24,6 @@ pub mod hart_state_management;
 pub mod ipi;
 /// Legacy SBI calls
 pub mod legacy;
-/// Nested Acceleration extension
-pub mod nested_acceleration;
 /// Performance Monitoring Unit extension
 pub mod performance_monitoring_unit;
 /// RFENCE extension
@@ -179,6 +177,7 @@ macro_rules! hart_mask {
 }
 
 /// A value restricted to a given range
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct RestrictedRange<const MIN: u32, const MAX: u32>(u32);
 
@@ -224,17 +223,80 @@ impl<const MIN: u32, const MAX: u32> core::fmt::Debug for RestrictedRange<MIN, M
 
 /// Representation of a physical address
 #[repr(transparent)]
-pub struct PhysicalAddress<T>(usize, core::marker::PhantomData<*mut T>);
+pub struct PhysicalAddress<T: ?Sized>(*mut T);
 
-impl<T> PhysicalAddress<T> {
+impl<T: ?Sized> core::fmt::Debug for PhysicalAddress<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<T: ?Sized> Copy for PhysicalAddress<T> {}
+impl<T: ?Sized> Clone for PhysicalAddress<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: ?Sized> Eq for PhysicalAddress<T> {}
+impl<T: ?Sized> PartialEq for PhysicalAddress<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}
+
+impl<T: ?Sized> Ord for PhysicalAddress<T> {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+impl<T: ?Sized> PartialOrd for PhysicalAddress<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl<T: ?Sized> PhysicalAddress<T> {
     /// Create a new [`PhysicalAddress`] from the raw integer value
-    pub fn new(value: usize) -> Self {
-        Self(value, core::marker::PhantomData)
+    pub fn new(value: usize) -> Self
+    where
+        T: Sized,
+    {
+        Self(value as *mut T)
     }
 
     /// Create a new [`PhysicalAddress`] from a pointer value
     pub fn from_ptr(ptr: *mut T) -> Self {
-        Self(ptr as usize, core::marker::PhantomData)
+        Self(ptr)
+    }
+}
+
+impl<T: Sized> PhysicalAddress<T> {
+    /// Get the pointer value of this [`PhysicalAddress`]
+    pub fn as_ptr(self) -> *mut T {
+        self.0
+    }
+}
+
+impl<T> PhysicalAddress<[T]> {
+    /// Get the pointer value of this [`PhysicalAddress`]
+    pub fn as_ptr(self) -> *mut T {
+        self.0.cast()
+    }
+
+    /// Get the length of the slice pointer
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(self) -> usize {
+        match NonNull::new(self.0) {
+            Some(p) => p.len(),
+            // This "trick" allows us to efectively use `<*mut [T]>::len()` on
+            // stable by creating a non-null slice pointer from a null slice
+            // pointer
+            None => NonNull::new(self.0.wrapping_byte_add(core::mem::size_of::<T>()))
+                .unwrap()
+                .len(),
+        }
     }
 }
 

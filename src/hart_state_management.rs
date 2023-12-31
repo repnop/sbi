@@ -5,15 +5,29 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::{ecall0, ecall1, ecall3, SbiError};
+use crate::{ecall0, ecall1, ecall3, PhysicalAddress, RestrictedRange, SbiError};
 
 /// Hart state management extension ID
 pub const EXTENSION_ID: usize = 0x48534D;
 
 /// Start the specific hart ID at the given physical address along with a
 /// user-defined value. On success, the hart begins execution at the physical
-/// address with the hart ID in `a0` and the user-defined value in `a1`, all
-/// other register values are in an undefined state.
+/// address with the following register states:
+///
+/// `satp` is reset to a value of `0` (virtual memory protection disabled)
+///
+/// `sstatus.SIE` is reset to a value of `0` (supervisor interrupts disabled)
+///
+/// `a0` contains the current hart ID
+///
+/// `a1` contains the value of the `opaque` parameter
+///
+/// All other registers are in an undefined state
+///
+/// ### Safety
+///
+/// This function is marked unsafe as it allows arbitrary execution at a given
+/// physical address, which can cause undefined behavior if used incorrectly.
 ///
 /// ### Possible errors
 ///
@@ -21,19 +35,23 @@ pub const EXTENSION_ID: usize = 0x48534D;
 ///     it is either an invalid physical address or execution is prohibited by
 ///     physical memory protection.
 ///
-/// [`SbiError::INVALID_PARAMETER`]: The specified hart ID is either not valid or
-///     cannot be started in S-mode.
+/// [`SbiError::INVALID_PARAMETER`]: The specified hart ID is either not valid
+///     or cannot be started in S-mode.
 ///
 /// [`SbiError::ALREADY_AVAILABLE`]: The specified hart ID is already started.
 ///
 /// [`SbiError::FAILED`]: Start request failed for unknown reasons.
-pub fn hart_start(hart_id: usize, start_addr: usize, private: usize) -> Result<(), SbiError> {
-    unsafe { ecall3(hart_id, start_addr, private, EXTENSION_ID, 0).map(drop) }
+pub unsafe fn hart_start(
+    hart_id: usize,
+    start_addr: PhysicalAddress<()>,
+    private: usize,
+) -> Result<(), SbiError> {
+    unsafe { ecall3(hart_id, start_addr.0 as usize, private, EXTENSION_ID, 0).map(drop) }
 }
 
 /// This SBI call stops S-mode execution on the current hart and yields
-/// execution back to the SBI implementation. Note that this function must be
-/// called with supervisor and user interrupts disabled.
+/// execution back to the SBI implementation. Note: **this function must be
+/// called with supervisor and user interrupts disabled.**
 ///
 /// ### Possible errors
 ///
@@ -62,8 +80,7 @@ pub fn hart_state(hart_id: usize) -> Result<HartState, SbiError> {
 /// execution path after being woken (as in, from the supervisor point-of-view,
 /// the SBI call returned normally with nothing changing inbetween).
 /// Non-retentive suspend types will **not** save any supervisor register or CSR
-/// state, and will resume execution at the given `resume_address` with only the
-/// following states being defined:
+/// state, and will resume execution at the given `resume_address` with:
 ///
 /// `satp` is reset to a value of `0` (virtual memory protection disabled)
 ///
@@ -72,6 +89,13 @@ pub fn hart_state(hart_id: usize) -> Result<HartState, SbiError> {
 /// `a0` contains the current hart ID
 ///
 /// `a1` contains the value of the `opaque` parameter
+///
+/// All other register states are undefined
+///
+/// ### Safety
+///
+/// This function is unsafe as it allows arbitrary execution at a given physical
+/// address, which may cause undefined behavior if used incorrectly.
 ///
 /// ### Possible errors
 ///
@@ -84,7 +108,7 @@ pub fn hart_state(hart_id: usize) -> Result<HartState, SbiError> {
 ///     implemented.
 ///
 /// [`SbiError::FAILED`]: The suspension request failed for an unknown reason.
-pub fn hart_suspend(suspend_type: SuspendType) -> Result<(), SbiError> {
+pub unsafe fn hart_suspend(suspend_type: SuspendType) -> Result<(), SbiError> {
     let (value, resume_addr, opaque) = suspend_type.to_values();
     unsafe { ecall3(value as usize, resume_addr, opaque, EXTENSION_ID, 3).map(drop) }
 }
@@ -96,35 +120,31 @@ pub enum SuspendType {
     /// restores those states upon hart resume.
     DefaultRetentive,
     /// A platform specific retentive suspend type, which saves register and CSR
-    /// state and restores those states upon hart resume. The variant value is a
-    /// value in the range `0x00000000..=0x6FFFFFFF`. This value will be clamped
-    /// to the maximum possible valid value for this suspension type if the
-    /// contained value exceeds it.
-    PlatformSpecificRetentive(u32),
+    /// state and restores those states upon hart resume. The value is within
+    /// the range of `0x10000000..=0x7FFFFFFF`.
+    PlatformSpecificRetentive(RestrictedRange<0x10000000, 0x7FFFFFFF>),
     /// Default non-retentive suspension which does not save any register or CSR
     /// state. The hart will resume execution at `resume_address` with only
     /// registers `a0` and `a1`, and CSRs `satp` and `sstatus.SIE` in a defined
     /// state.
     DefaultNonRetentive {
         /// The address to resume execution at.
-        resume_address: usize,
+        resume_address: PhysicalAddress<()>,
         /// User-defined opaque value passed to `resume_address` in `a1` upon
         /// resumption.
         opaque: usize,
     },
     /// A platform specific non-retentive suspend type, which does not save any
     /// register or CSR state. The variant `value` is a value in the range
-    /// `0x00000000..=0x6FFFFFFF`. This value will be clamped to the maximum
-    /// possible valid value for this suspension type if the contained value
-    /// exceeds it. The hart will resume execution at the `resume_address` with
-    /// only registers `a0` and `a1`, and CSRs `satp` and `sstatus.SIE` in a
-    /// defined state.
+    /// `0x90000000..=0xFFFFFFFF`. The hart will resume execution at the
+    /// `resume_address` with only registers `a0` and `a1`, and CSRs `satp` and
+    /// `sstatus.SIE` in a defined state.
     PlatformSpecificNonRetentive {
         /// The platform-specific suspend value, in the range
-        /// `0x00000000..=0x6FFFFFFF`.
-        value: u32,
+        /// `0x90000000..=0xFFFFFFFF`.
+        value: RestrictedRange<0x90000000, 0xFFFFFFFF>,
         /// The address to resume execution at.
-        resume_address: usize,
+        resume_address: PhysicalAddress<()>,
         /// User-defined opaque value passed to `resume_address` in `a1` upon
         /// resumption.
         opaque: usize,
@@ -135,16 +155,16 @@ impl SuspendType {
     fn to_values(self) -> (u32, usize, usize) {
         match self {
             Self::DefaultRetentive => (0x00000000, 0, 0),
-            Self::PlatformSpecificRetentive(n) => (n.min(0x6FFFFFFF) + 0x10000000, 0, 0),
+            Self::PlatformSpecificRetentive(n) => (n.0, 0, 0),
             Self::DefaultNonRetentive {
                 resume_address,
                 opaque,
-            } => (0x80000000, resume_address, opaque),
+            } => (0x80000000, resume_address.as_ptr() as usize, opaque),
             Self::PlatformSpecificNonRetentive {
                 value,
                 resume_address,
                 opaque,
-            } => (value.min(0x6FFFFFFF) + 0x90000000, resume_address, opaque),
+            } => (value.0, resume_address.as_ptr() as usize, opaque),
         }
     }
 }
