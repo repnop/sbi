@@ -241,7 +241,7 @@ impl<T: ?Sized> Clone for PhysicalAddress<T> {
 impl<T: ?Sized> Eq for PhysicalAddress<T> {}
 impl<T: ?Sized> PartialEq for PhysicalAddress<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
+        core::ptr::eq(self.0, other.0)
     }
 }
 
@@ -253,7 +253,7 @@ impl<T: ?Sized> Ord for PhysicalAddress<T> {
 
 impl<T: ?Sized> PartialOrd for PhysicalAddress<T> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        self.0.partial_cmp(&other.0)
+        Some(self.cmp(other))
     }
 }
 

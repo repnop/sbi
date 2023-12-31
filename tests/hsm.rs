@@ -5,7 +5,7 @@
 mod common;
 
 use core::sync::atomic::AtomicBool;
-use sbi::hart_state_management::{hart_status, hart_stop, HartStatus};
+use sbi::hart_state_management::{hart_state, hart_stop, HartState};
 
 static HART_BOOTED: AtomicBool = AtomicBool::new(false);
 
@@ -20,8 +20,8 @@ extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
     }
 
     assert_eq!(
-        hart_status(target_hart).expect("hart_status"),
-        HartStatus::Started,
+        hart_state(target_hart).expect("hart_status"),
+        HartState::Started,
     );
 
     println!("🆗 Hart {target_hart} started");
@@ -29,8 +29,8 @@ extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
     common::wait(150);
 
     assert_eq!(
-        hart_status(target_hart).expect("hart_status"),
-        HartStatus::Stopped,
+        hart_state(target_hart).expect("hart_status"),
+        HartState::Stopped,
         "❌ Hart {target_hart} did not stop in time",
     );
 

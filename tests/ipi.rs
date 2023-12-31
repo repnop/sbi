@@ -4,14 +4,14 @@
 
 mod common;
 
-use sbi::hart_state_management::HartStatus;
+use sbi::hart_state_management::HartState;
 
 extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
     let target_hart = if hart_id == 0 { 1 } else { 0 };
     common::start_other_hart(other_main);
     while !matches!(
-        sbi::hart_state_management::hart_status(target_hart).expect("hart_status"),
-        HartStatus::Started
+        sbi::hart_state_management::hart_state(target_hart).expect("hart_status"),
+        HartState::Started
     ) {
         common::wait(100);
     }

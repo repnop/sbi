@@ -1,3 +1,5 @@
+use sbi::PhysicalAddress;
+
 static mut BOOT_HART_ID: usize = 0;
 
 #[naked]
@@ -139,8 +141,14 @@ unsafe extern "C" fn other_entry(hart_id: usize, f: extern "C" fn(usize) -> !) -
 #[allow(dead_code)]
 pub fn start_other_hart(f: extern "C" fn(usize) -> !) {
     let target_hart = if unsafe { BOOT_HART_ID } == 0 { 1 } else { 0 };
-    sbi::hart_state_management::hart_start(target_hart, other_entry as usize, f as usize)
+    unsafe {
+        sbi::hart_state_management::hart_start(
+            target_hart,
+            PhysicalAddress::from_ptr(other_entry as *mut ()),
+            f as usize,
+        )
         .expect("start_hart");
+    }
 }
 
 pub fn scause() -> usize {
