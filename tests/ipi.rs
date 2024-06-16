@@ -1,20 +1,21 @@
-#![feature(asm_sym, naked_functions, fn_align)]
+#![feature(naked_functions, fn_align)]
 #![no_std]
 #![no_main]
 
 mod common;
 
-use sbi::hart_state_management::HartStatus;
+use sbi::hart_state_management::HartState;
 
-#[no_mangle]
 extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
     let target_hart = if hart_id == 0 { 1 } else { 0 };
     common::start_other_hart(other_main);
     while !matches!(
-        sbi::hart_state_management::hart_status(target_hart).expect("hart_status"),
-        HartStatus::Started
-    ) {}
-    common::wait(1000);
+        sbi::hart_state_management::hart_state(target_hart).expect("hart_status"),
+        HartState::Started
+    ) {
+        common::wait(100);
+    }
+
     sbi::ipi::send_ipi(sbi::HartMask::from(target_hart)).expect("send_ipi");
     common::wait(1000);
     println!("❌ Other hart did not trigger an exit in time");
@@ -26,6 +27,8 @@ extern "C" fn other_main(_: usize) -> ! {
     println!("🆗 Hart started");
     common::set_stvec(success);
     common::enable_interrupts();
+
+    #[allow(clippy::empty_loop)]
     loop {}
 }
 

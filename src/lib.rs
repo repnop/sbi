@@ -14,6 +14,10 @@ compile_error!("SBI is only available on RISC-V platforms");
 
 /// Required base SBI functionality
 pub mod base;
+/// Collaborative Processor Performance Control
+pub mod collaborative_processor_performance_control;
+/// Debug Console extension
+pub mod debug_console;
 /// Hart State Management extension
 pub mod hart_state_management;
 /// IPI extension
@@ -26,50 +30,66 @@ pub mod performance_monitoring_unit;
 pub mod rfence;
 /// System Reset extension
 pub mod system_reset;
+/// System Suspend extension
+pub mod system_suspend;
 /// Timer extension
 pub mod timer;
 
+use core::{num::NonZeroIsize, ptr::NonNull};
+
+/// A convenience alias to the [`collaborative_processor_performance_control`] module.
+pub use collaborative_processor_performance_control as cbbc;
 /// A convenience alias to the [`hart_state_management`] module.
 pub use hart_state_management as hsm;
+/// A convenience alias to the [`performance_monitoring_unit`] module;
 pub use performance_monitoring_unit as pmu;
 
 /// Error codes returned by SBI calls
 ///
+/// For all of the various error codes, see the associated constants on this type, such as [`SbiError::FAILED`]
+///
+/// Implementation note: This error type is not represented by a proper `enum`
+/// so that constructing it based on the returned integer code does not require
+/// panicking in the event that new error codes are added to the specification.
+/// Using associated constants also works to emulate `#[non_exhaustive]` since
+/// it is not possible to publically construct this type, so that any new errors
+/// won't cause compilation errors in code attempting to handle all errors.
+/// (though that should be pretty uncommon)
+///
 /// note: `SBI_SUCCESS` is not represented here since this is to be used as the
 /// error type in a `Result`
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SbiError {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct SbiError(Option<NonZeroIsize>);
+
+impl SbiError {
     /// The SBI call failed
-    Failed,
+    pub const FAILED: Self = Self(unsafe { Some(NonZeroIsize::new_unchecked(-1)) });
     /// The SBI call is not implemented or the functionality is not available
-    NotSupported,
+    pub const NOT_SUPPORTED: Self = Self(unsafe { Some(NonZeroIsize::new_unchecked(-2)) });
     /// An invalid parameter was passed
-    InvalidParameter,
+    pub const INVALID_PARAMETER: Self = Self(unsafe { Some(NonZeroIsize::new_unchecked(-3)) });
     /// The SBI implementation has denied execution of the call functionality
-    Denied,
+    pub const DENIED: Self = Self(unsafe { Some(NonZeroIsize::new_unchecked(-4)) });
     /// An invalid address was passed
-    InvalidAddress,
+    pub const INVALID_ADDRESS: Self = Self(unsafe { Some(NonZeroIsize::new_unchecked(-5)) });
     /// The resource is already available
-    AlreadyAvailable,
+    pub const ALREADY_AVAILABLE: Self = Self(unsafe { Some(NonZeroIsize::new_unchecked(-6)) });
     /// The resource was previously started
-    AlreadyStarted,
+    pub const ALREADY_STARTED: Self = Self(unsafe { Some(NonZeroIsize::new_unchecked(-7)) });
     /// The resource was previously stopped
-    AlreadyStopped,
+    pub const ALREADY_STOPPED: Self = Self(unsafe { Some(NonZeroIsize::new_unchecked(-8)) });
+    /// Shared memory is unavailable
+    pub const SHARED_MEMORY_UNAVAILABLE: Self =
+        Self(unsafe { Some(NonZeroIsize::new_unchecked(-9)) });
 }
 
 impl SbiError {
     #[inline]
     fn new(n: isize) -> Self {
         match n {
-            -1 => SbiError::Failed,
-            -2 => SbiError::NotSupported,
-            -3 => SbiError::InvalidParameter,
-            -4 => SbiError::Denied,
-            -5 => SbiError::InvalidAddress,
-            -6 => SbiError::AlreadyAvailable,
-            -7 => SbiError::AlreadyStarted,
-            -8 => SbiError::AlreadyStopped,
-            n => unreachable!("bad SBI error return value: {}", n),
+            n if n.is_negative() => Self(Some(unsafe { NonZeroIsize::new_unchecked(n) })),
+            _ => Self(None),
         }
     }
 }
@@ -79,15 +99,17 @@ impl core::fmt::Display for SbiError {
         write!(
             f,
             "{}",
-            match self {
-                SbiError::AlreadyAvailable => "resource is already available",
-                SbiError::Denied => "SBI implementation denied execution",
-                SbiError::Failed => "call to SBI failed",
-                SbiError::InvalidAddress => "invalid address passed",
-                SbiError::InvalidParameter => "invalid parameter passed",
-                SbiError::NotSupported => "SBI call not implemented or functionality not available",
-                SbiError::AlreadyStarted => "resource was already started",
-                SbiError::AlreadyStopped => "resource was already stopped",
+            match *self {
+                SbiError::ALREADY_AVAILABLE => "resource is already available",
+                SbiError::DENIED => "SBI implementation denied execution",
+                SbiError::FAILED => "call to SBI failed",
+                SbiError::INVALID_ADDRESS => "invalid address passed",
+                SbiError::INVALID_PARAMETER => "invalid parameter passed",
+                SbiError::NOT_SUPPORTED =>
+                    "SBI call not implemented or functionality not available",
+                SbiError::ALREADY_STARTED => "resource was already started",
+                SbiError::ALREADY_STOPPED => "resource was already stopped",
+                _ => "unknown error",
             }
         )
     }
@@ -152,6 +174,142 @@ macro_rules! hart_mask {
         $(hart_mask = hart_mask.with($hart_id);)*
         hart_mask
     }};
+}
+
+/// A value restricted to a given range
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
+pub struct RestrictedRange<const MIN: u32, const MAX: u32>(u32);
+
+impl<const MIN: u32, const MAX: u32> RestrictedRange<MIN, MAX> {
+    /// Create a new [`RestrictedRange`] value
+    ///
+    /// ## Panics
+    ///
+    /// This function will panic if the provided value is outside of the range
+    /// of the type.
+    pub const fn new(value: u32) -> Self {
+        if value < MIN || value > MAX {
+            panic!("invalid value supplied to `PlatformSpecific::new`")
+        }
+
+        Self(value)
+    }
+}
+
+impl<const MIN: u32, const MAX: u32> From<RestrictedRange<MIN, MAX>> for u32 {
+    fn from(value: RestrictedRange<MIN, MAX>) -> Self {
+        value.0
+    }
+}
+
+impl<const MIN: u32, const MAX: u32> Clone for RestrictedRange<MIN, MAX> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<const MIN: u32, const MAX: u32> Copy for RestrictedRange<MIN, MAX> {}
+
+impl<const MIN: u32, const MAX: u32> core::fmt::Debug for RestrictedRange<MIN, MAX> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "RestrictedRange<MIN={MIN:#X}, MAX={MAX:#X}>({:#X})",
+            self.0
+        )
+    }
+}
+
+/// Representation of a physical address
+#[repr(transparent)]
+pub struct PhysicalAddress<T: ?Sized>(*mut T);
+
+impl<T: ?Sized> core::fmt::Debug for PhysicalAddress<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<T: ?Sized> Copy for PhysicalAddress<T> {}
+impl<T: ?Sized> Clone for PhysicalAddress<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: ?Sized> Eq for PhysicalAddress<T> {}
+impl<T: ?Sized> PartialEq for PhysicalAddress<T> {
+    fn eq(&self, other: &Self) -> bool {
+        core::ptr::eq(self.0, other.0)
+    }
+}
+
+impl<T: ?Sized> Ord for PhysicalAddress<T> {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+impl<T: ?Sized> PartialOrd for PhysicalAddress<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T: ?Sized> PhysicalAddress<T> {
+    /// Create a new [`PhysicalAddress`] from the raw integer value
+    pub fn new(value: usize) -> Self
+    where
+        T: Sized,
+    {
+        Self(value as *mut T)
+    }
+
+    /// Create a new [`PhysicalAddress`] from a pointer value
+    pub fn from_ptr(ptr: *mut T) -> Self {
+        Self(ptr)
+    }
+}
+
+impl<T: Sized> PhysicalAddress<T> {
+    /// Get the pointer value of this [`PhysicalAddress`]
+    pub fn as_ptr(self) -> *mut T {
+        self.0
+    }
+}
+
+impl<T> PhysicalAddress<[T]> {
+    /// Get the pointer value of this [`PhysicalAddress`]
+    pub fn as_ptr(self) -> *mut T {
+        self.0.cast()
+    }
+
+    /// Get the length of the slice pointer
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(self) -> usize {
+        match NonNull::new(self.0) {
+            Some(p) => p.len(),
+            // This "trick" allows us to efectively use `<*mut [T]>::len()` on
+            // stable by creating a non-null slice pointer from a null slice
+            // pointer
+            None => NonNull::new(self.0.wrapping_byte_add(core::mem::size_of::<T>()))
+                .unwrap()
+                .len(),
+        }
+    }
+}
+
+impl<T> From<*mut T> for PhysicalAddress<T> {
+    fn from(value: *mut T) -> Self {
+        Self::from_ptr(value)
+    }
+}
+
+impl<T> From<NonNull<T>> for PhysicalAddress<T> {
+    fn from(value: NonNull<T>) -> Self {
+        Self::from_ptr(value.as_ptr())
+    }
 }
 
 /// A zero-argument `ecall` with the given extension and function IDs.

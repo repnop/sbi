@@ -12,6 +12,14 @@ description = "A pure-Rust library to interact with the RISC-V Supervisor Binary
 keywords = ["sbi", "riscv", "osdev"]
 categories = ["embedded", "os"]
 readme = "README.md"
+exclude = [
+    "tests/",
+    ".vscode/",
+    ".cargo/",
+    "fw_jump32.elf",
+    "fw_jump64.elf",
+    "rust-toolchain.toml",
+]
 
 [package.metadata.docs.rs]
 default-target = "riscv64imac-unknown-none-elf"
@@ -37,4 +45,9 @@ harness = false
 [[test]]
 name = "base"
 path = "tests/base.rs"
+harness = false
+
+[[test]]
+name = "debug_console"
+path = "tests/debug_console.rs"
 harness = false

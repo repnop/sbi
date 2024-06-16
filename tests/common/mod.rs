@@ -1,3 +1,5 @@
+use sbi::PhysicalAddress;
+
 static mut BOOT_HART_ID: usize = 0;
 
 #[naked]
@@ -28,10 +30,11 @@ unsafe extern "C" fn _start(hart_id: usize, fdt: usize) -> ! {
                 sw a0, 0(t2)
                 lla t2, {fail}
                 csrw stvec, t2
-                j main
+                j {main}
         ",
         boot_hart_id = sym BOOT_HART_ID,
         fail = sym fail,
+        main = sym super::main,
         options(noreturn),
     );
 }
@@ -84,6 +87,7 @@ pub fn exit(status: u16) -> ! {
     unreachable!()
 }
 
+#[allow(dead_code)]
 pub fn wait(millis: u32) {
     let mut time = time();
 
@@ -98,6 +102,7 @@ pub fn wait(millis: u32) {
     }
 }
 
+#[allow(dead_code)]
 pub fn time() -> u64 {
     let time: u64;
     #[cfg(target_arch = "riscv64")]
@@ -117,24 +122,33 @@ pub fn time() -> u64 {
     time
 }
 
+#[allow(dead_code)]
 pub fn set_stvec(f: extern "C" fn() -> !) {
     unsafe { core::arch::asm!("csrw stvec, {}", in(reg) f) };
 }
 
 #[naked]
 #[rustfmt::skip]
-unsafe extern "C" fn other_entry() -> ! {
+#[allow(dead_code)]
+unsafe extern "C" fn other_entry(hart_id: usize, f: extern "C" fn(usize) -> !) -> ! {
     core::arch::asm!(
-        "lla sp, __stack_end2",
+        "lla sp, __stack_start2",
         "jr a1",
         options(noreturn),
     )
 }
 
+#[allow(dead_code)]
 pub fn start_other_hart(f: extern "C" fn(usize) -> !) {
     let target_hart = if unsafe { BOOT_HART_ID } == 0 { 1 } else { 0 };
-    sbi::hart_state_management::hart_start(target_hart, other_entry as usize, f as usize)
+    unsafe {
+        sbi::hart_state_management::hart_start(
+            target_hart,
+            PhysicalAddress::from_ptr(other_entry as *mut ()),
+            f as usize,
+        )
         .expect("start_hart");
+    }
 }
 
 pub fn scause() -> usize {
@@ -143,6 +157,7 @@ pub fn scause() -> usize {
     scause
 }
 
+#[allow(dead_code)]
 pub fn enable_interrupts() {
     unsafe { core::arch::asm!("csrs sie, {}", in(reg) (1 << 1) | (1 << 5) | (1 << 9)) };
     unsafe { core::arch::asm!("csrsi sstatus, 1 << 1") };

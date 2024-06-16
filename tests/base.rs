@@ -1,15 +1,14 @@
-#![feature(asm_sym, naked_functions, fn_align)]
+#![feature(naked_functions, fn_align)]
 #![no_std]
 #![no_main]
 
 mod common;
 
-#[no_mangle]
-extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
+extern "C" fn main(_hart_id: usize, _fdt: usize) -> ! {
     assert_eq!(sbi::base::impl_id(), sbi::base::SbiImplId::OpenSbi);
     assert_eq!(
         sbi::base::spec_version(),
-        sbi::base::SbiSpecVersion { major: 0, minor: 3 }
+        sbi::base::SbiSpecVersion { major: 2, minor: 0 }
     );
     assert_eq!(sbi::base::marchid(), 0);
     assert_eq!(sbi::base::mvendorid(), 0);
@@ -29,5 +28,6 @@ extern "C" fn main(hart_id: usize, _fdt: usize) -> ! {
     assert!(sbi::base::probe_extension(sbi::legacy::SEND_IPI_EID).is_available());
     assert!(sbi::base::probe_extension(sbi::legacy::SET_TIMER_EID).is_available());
     assert!(sbi::base::probe_extension(sbi::legacy::SHUTDOWN_EID).is_available());
+    println!("🆗 extensions successfully probed");
     common::exit(0);
 }
