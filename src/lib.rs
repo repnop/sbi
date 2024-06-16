@@ -247,7 +247,7 @@ impl<T: ?Sized> PartialEq for PhysicalAddress<T> {
 
 impl<T: ?Sized> Ord for PhysicalAddress<T> {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        self.0.cmp(&other.0)
+        self.0.cast::<()>().cmp(&other.0.cast::<()>())
     }
 }
 

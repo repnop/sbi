@@ -179,12 +179,12 @@ pub mod registers {
     /// level.
     ///
     /// - Below the guaranteed performance level, desired performance expresses
-    /// the average performance level the platform must provide subject to the
-    /// Performance Reduction Tolerance.
+    ///   the average performance level the platform must provide subject to the
+    ///   Performance Reduction Tolerance.
     /// - Above the guaranteed performance level, the platform must provide the
-    /// guaranteed performance level. The platform should attempt to provide up
-    /// to the desired performance level, if current operating conditions allow
-    /// for it, but it is not required to do so
+    ///   guaranteed performance level. The platform should attempt to provide up
+    ///   to the desired performance level, if current operating conditions allow
+    ///   for it, but it is not required to do so
     ///
     /// When Autonomous Selection is enabled, it is not necessary for OSPM to
     /// assess processor workload performance demand and convey a corresponding
@@ -468,12 +468,12 @@ pub mod registers {
     ///
     /// If supported by the platform, OSPM may write a time value (10^3-bit exp
     /// * 7-bit mantissa in 1μsec units: 1us to 1270 sec) to this field to
-    /// indicate a moving utilization sensitivity window to the platform’s
-    /// autonomous selection policy. Combined with the Energy Performance
-    /// Preference Register value, the Activity Window influences the rate of
-    /// performance increase / decrease of the platform’s autonomous selection
-    /// policy. OSPM writes a zero value to this register to enable the platform
-    /// to determine an appropriate Activity Window depending on the workload.
+    ///   indicate a moving utilization sensitivity window to the platform’s
+    ///   autonomous selection policy. Combined with the Energy Performance
+    ///   Preference Register value, the Activity Window influences the rate of
+    ///   performance increase / decrease of the platform’s autonomous selection
+    ///   policy. OSPM writes a zero value to this register to enable the platform
+    ///   to determine an appropriate Activity Window depending on the workload.
     ///
     /// Writes to this register only have meaning when Autonomous Selection is
     /// enabled.
