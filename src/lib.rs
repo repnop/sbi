@@ -123,6 +123,8 @@ pub struct HartMask {
 }
 
 impl HartMask {
+    const ALL_HART_BASE: usize = 0usize.wrapping_sub(1);
+
     /// Create a new [`HartMask`] with the given base and no hart IDs selected
     #[inline]
     pub const fn new(base: usize) -> Self {
@@ -137,6 +139,12 @@ impl HartMask {
             base: hart_id,
             mask: 1,
         }
+    }
+
+    /// Create a new [`HartMask`] selecting all available harts of the system
+    #[inline]
+    pub const fn all() -> Self {
+        Self::new(Self::ALL_HART_BASE)
     }
 
     /// Select the given hart ID. If `hart_id` is out of the range of available
